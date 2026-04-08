@@ -4,350 +4,188 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Provisionsrechner PRO</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <style>
-body { font-family: Arial; margin:0; background:#0b1a3a; color:white; }
-h1 { text-align:center; padding:15px; }
-.container { padding:10px; }
-
-.card {
-    background:#132a5e;
-    padding:15px;
-    margin-bottom:10px;
-    border-radius:10px;
-}
-
-input, select, button {
-    width:100%;
-    padding:10px;
-    margin-top:8px;
-}
-
-button {
-    background:#2196f3;
-    color:white;
-    border:none;
-}
-
-.entry {
-    border-bottom:1px solid #2c3e80;
-    padding:8px;
-}
-
-.small { width:auto; padding:5px; }
-
-.progress {
-    background:#1e3c72;
-    border-radius:10px;
-    overflow:hidden;
-    margin-top:10px;
-}
-
-.progress-bar {
-    height:20px;
-    background:#4caf50;
-    text-align:center;
-    font-size:12px;
-}
-
-.kaffee { color:#6f4e37; }
-.snack { color:silver; }
-.wasser { color:#4da6ff; }
-
-canvas {
-    width:100% !important;
-    height:260px !important;
-}
+body{font-family:Arial;margin:0;background:#0b1a3a;color:white;}
+h1{text-align:center;padding:15px;}
+.container{padding:10px;}
+.card{background:#132a5e;padding:15px;margin-bottom:10px;border-radius:10px;}
+input,select,button{width:100%;padding:10px;margin-top:8px;}
+button{background:#2196f3;color:white;border:none;}
+.entry{border-bottom:1px solid #2c3e80;padding:8px;}
+.progress{background:#1e3c72;border-radius:10px;overflow:hidden;margin-top:10px;}
+.progress-bar{height:20px;background:#4caf50;text-align:center;font-size:12px;}
+canvas{width:100%!important;height:260px!important;}
 </style>
 </head>
-
 <body>
-
 <h1>💰 Provisionsrechner</h1>
-
 <div class="container">
-
 <div class="card">
 <h3>➕ Eintrag</h3>
-
 <select id="produkt">
 <option value="Kaffee">☕ Kaffee</option>
 <option value="Snack">🍫 Snack</option>
 <option value="Wasser">💧 Wasser</option>
 </select>
-
 <input type="number" id="umsatz" placeholder="Umsatz €">
 <input type="number" id="provision" placeholder="Provision %">
-
 <input type="date" id="datum">
-
 <button onclick="addEntry()">Speichern</button>
 </div>
-
 <div class="card">
 <h3>📅 Monat auswählen</h3>
 <select id="monatFilter" onchange="update()"></select>
 </div>
-
 <div class="card">
 <h3>📊 Monatsübersicht</h3>
 <p id="monat"></p>
 <p id="trend"></p>
 </div>
-
 <div class="card">
 <h3>🎯 Monatsziel</h3>
 <input type="number" id="ziel" placeholder="Ziel €" oninput="update()">
-<div class="progress">
-<div id="progressBar" class="progress-bar">0%</div>
+<div class="progress"><div id="progressBar" class="progress-bar">0%</div></div>
 </div>
-</div>
-
 <div class="card">
 <h3>📅 Wochenübersicht</h3>
 <div id="wochen"></div>
 </div>
-
 <div class="card">
 <h3>📦 Kategorien</h3>
 <p id="stats"></p>
 </div>
-
 <div class="card">
 <h3>📊 Geräte verkauft</h3>
 <p id="anzahl"></p>
 </div>
-
 <div class="card">
 <h3>🍩 Diagramm</h3>
 <canvas id="chart"></canvas>
 </div>
-
 <div class="card">
 <h3>📊 Monatsvergleich</h3>
 <canvas id="vergleichChart"></canvas>
 </div>
-
 <div class="card">
 <h3>🗓 Einträge</h3>
 <div id="liste"></div>
 </div>
-
 <div class="card">
 <h3>📄 Export</h3>
-<button onclick="exportPDF()">PDF erstellen</button>
+<button onclick="exportPDF()">PDF Bericht</button>
 </div>
-
 </div>
-
 <script>
-let data = JSON.parse(localStorage.getItem("provData")) || [];
-let chart;
-let vergleichChart;
-
-// Datum automatisch setzen
-document.getElementById("datum").valueAsDate = new Date();
-
-function save() {
-    localStorage.setItem("provData", JSON.stringify(data));
-}
-
-function addEntry() {
-    let u = parseFloat(umsatz.value);
-    let pr = parseFloat(provision.value);
-    let d = datum.value;
-    let p = produkt.value;
-
-    if (!u || !pr || !d) return alert("Bitte alles ausfüllen");
-
-    data.push({
-        id: Date.now(),
-        produkt: p,
-        umsatz: u,
-        provision: pr,
-        datum: d,
-        prov: u * pr / 100
-    });
-
-    save();
-    fillMonate();
-    update();
-}
-
-function monthKey(date) {
-    let dt = new Date(date);
-    return dt.getFullYear() + "-" + dt.getMonth();
-}
-
-function fillMonate() {
-    monatFilter.innerHTML = "";
-
-    let map = {};
-    data.forEach(e => map[monthKey(e.datum)] = e.datum);
-
-    Object.keys(map).sort().reverse().forEach(k => {
-        let d = new Date(map[k]);
-        let opt = document.createElement("option");
-        opt.value = k;
-        opt.text = d.toLocaleString("de-DE", {month:"long", year:"numeric"});
-        monatFilter.appendChild(opt);
-    });
-}
-
+let data=JSON.parse(localStorage.getItem("provData"))||[];
+let chart,vergleichChart;
+document.getElementById("datum").valueAsDate=new Date();
+function save(){localStorage.setItem("provData",JSON.stringify(data));}
+function addEntry(){
+let u=parseFloat(umsatz.value);
+let pr=parseFloat(provision.value);
+let d=datum.value;
+let p=produkt.value;
+if(!u||!pr||!d)return alert("Bitte alles ausfüllen");
+data.push({id:Date.now(),produkt:p,umsatz:u,datum:d,prov:upr/100});
+save();fillMonate();update();}
+function monthKey(date){let dt=new Date(date);return dt.getFullYear()+"-"+dt.getMonth();}
+function fillMonate(){
+monatFilter.innerHTML="";
+let map={};
+data.forEach(e=>map[monthKey(e.datum)]=e.datum);
+Object.keys(map).sort().reverse().forEach(k=>{
+let d=new Date(map[k]);
+let opt=document.createElement("option");
+opt.value=k;
+opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
+monatFilter.appendChild(opt);});}
 function getLastMonth(key){
-    let [y,m] = key.split("-").map(Number);
-    let d = new Date(y, m-1, 1);
-    return d.getFullYear()+"-"+d.getMonth();
-}
-
+let[y,m]=key.split("-").map(Number);
+let d=new Date(y,m-1,1);
+return d.getFullYear()+"-"+d.getMonth();}
 function getWeek(date){
-    let d=new Date(date);
-    let start=new Date(d.getFullYear(), d.getMonth(), 1);
-    return Math.ceil((d.getDate()+start.getDay())/7);
+let d=new Date(date);
+let start=new Date(d.getFullYear(),d.getMonth(),1);
+return Math.ceil((d.getDate()+start.getDay())/7);}
+function update(){
+let selected=monatFilter.value;
+if(!selected&&data.length>0)selected=monthKey(data[data.length-1].datum);
+let sum=0,last=0,kaffe=0,snack=0,wasser=0,countK=0,countS=0,countW=0,weeks={};
+let lastKey=getLastMonth(selected);
+data.forEach(e=>{
+let k=monthKey(e.datum);
+if(k===selected){
+sum+=e.prov;
+let w=getWeek(e.datum);
+weeks[w]=(weeks[w]||0)+e.prov;
+if(e.produkt==="Kaffee"){kaffe+=e.prov;countK++;}
+if(e.produkt==="Snack"){snack+=e.prov;countS++;}
+if(e.produkt==="Wasser"){wasser+=e.prov;countW++;}}
+if(k===lastKey)last+=e.prov;});
+monat.innerText="Provision: "+sum.toFixed(2)+" €";
+let diff=sum-last;
+trend.innerText=diff>=0?"📈 +"+diff.toFixed(2)+" € besser":"📉 "+diff.toFixed(2)+" € schlechter";
+let zielVal=parseFloat(ziel.value)||0;
+let percent=zielVal?(sum/zielVal100):0;
+percent=Math.min(percent,100);
+progressBar.style.width=percent+"%";
+progressBar.innerText=percent.toFixed(0)+"%";
+let html="";
+Object.keys(weeks).forEach(w=>{html+="Woche "+w+": "+weeks[w].toFixed(2)+" €<br>";});
+wochen.innerHTML=html;
+stats.innerHTML="Kaffee: "+kaffe.toFixed(2)+" €<br>Snack: "+snack.toFixed(2)+" €<br>Wasser: "+wasser.toFixed(2)+" €";
+anzahl.innerHTML="Kaffee: "+countK+" Stück<br>Snack: "+countS+" Stück<br>Wasser: "+countW+" Stück";
+render(selected);
+draw(kaffe,snack,wasser);
+drawVergleich(sum,last);}
+function render(selected){
+liste.innerHTML="";
+data.sort((a,b)=>b.id-a.id);
+data.forEach(e=>{
+if(monthKey(e.datum)!==selected)return;
+let div=document.createElement("div");
+div.className="entry";
+div.innerHTML="<b>"+e.datum+"</b> | "+e.produkt+" | "+e.umsatz+"€ → "+e.prov.toFixed(2)+"€<br><button onclick='del("+e.id+")'>❌ Löschen</button>";
+liste.appendChild(div);});}
+function del(id){data=data.filter(e=>e.id!==id);save();fillMonate();update();}
+function draw(k,s,w){
+if(chart)chart.destroy();
+chart=new Chart(chartEl,{type:"doughnut",data:{labels:["Kaffee","Snack","Wasser"],datasets:[{data:[k,s,w],backgroundColor:["#6f4e37","silver","#4da6ff"]}]},options:{plugins:{legend:{labels:{color:"white"}}},cutout:"60%"}});
 }
-
-function update() {
-    let selected = monatFilter.value;
-    if (!selected && data.length > 0) selected = monthKey(data[data.length-1].datum);
-
-    let sum=0, last=0;
-    let kaffe=0, snack=0, wasser=0;
-    let countK=0, countS=0, countW=0;
-    let weeks={};
-
-    let lastKey = getLastMonth(selected);
-
-    data.forEach(e => {
-        let k = monthKey(e.datum);
-
-        if (k === selected) {
-            sum += e.prov;
-
-            let w = getWeek(e.datum);
-            weeks[w] = (weeks[w] || 0) + e.prov;
-
-            if(e.produkt==="Kaffee"){kaffe+=e.prov; countK++;}
-            if(e.produkt==="Snack"){snack+=e.prov; countS++;}
-            if(e.produkt==="Wasser"){wasser+=e.prov; countW++;}
-        }
-
-        if (k === lastKey) last += e.prov;
-    });
-
-    monat.innerText = "Provision: " + sum.toFixed(2) + " €";
-
-    let diff = sum - last;
-    trend.innerText = diff >= 0 
-        ? "📈 +" + diff.toFixed(2) + " € besser als Vormonat"
-        : "📉 " + diff.toFixed(2) + " € schlechter als Vormonat";
-
-    // Fortschritt
-    let zielVal = parseFloat(ziel.value) || 0;
-    let percent = zielVal ? (sum / zielVal * 100) : 0;
-    percent = Math.min(percent, 100);
-
-    progressBar.style.width = percent + "%";
-    progressBar.innerText = percent.toFixed(0) + "%";
-
-    // Wochen
-    let html="";
-    Object.keys(weeks).forEach(w=>{
-        html += "Woche "+w+": "+weeks[w].toFixed(2)+" €<br>";
-    });
-    wochen.innerHTML = html;
-
-    stats.innerHTML =
-        "<span class='kaffee'>☕ Kaffee:</span> "+kaffe.toFixed(2)+" €<br>"+
-        "<span class='snack'>🍫 Snack:</span> "+snack.toFixed(2)+" €<br>"+
-        "<span class='wasser'>💧 Wasser:</span> "+wasser.toFixed(2)+" €";
-
-    anzahl.innerHTML =
-        "<span class='kaffee'>☕ Kaffee:</span> "+countK+" Stück<br>"+
-        "<span class='snack'>🍫 Snack:</span> "+countS+" Stück<br>"+
-        "<span class='wasser'>💧 Wasser:</span> "+countW+" Stück";
-
-    render(selected);
-    draw(kaffe, snack, wasser);
-    drawVergleich(sum, last);
+function drawVergleich(c,l){
+if(vergleichChart)vergleichChart.destroy();
+vergleichChart=new Chart(vergleichChartEl,{type:"bar",data:{labels:["Vormonat","Aktuell"],datasets:[{data:[l,c]}]}});
 }
-
-function render(selected) {
-    liste.innerHTML="";
-    data.sort((a,b)=>b.id-a.id);
-
-    data.forEach(e => {
-        if(monthKey(e.datum)!==selected) return;
-
-        let div = document.createElement("div");
-        div.className="entry";
-
-        div.innerHTML =
-            "<b>"+e.datum+"</b> | "+e.produkt+" | "+e.umsatz+"€ → "+e.prov.toFixed(2)+"€<br>"+
-            "<button class='small' onclick='del("+e.id+")'>❌ Löschen</button>";
-
-        liste.appendChild(div);
-    });
-}
-
-function del(id){
-    data = data.filter(e=>e.id!==id);
-    save();
-    fillMonate();
-    update();
-}
-
-function draw(kaffe,snack,wasser){
-    if(chart) chart.destroy();
-
-    chart = new Chart(chartEl,{
-        type:"doughnut",
-        data:{
-            labels:["Kaffee","Snack","Wasser"],
-            datasets:[{
-                data:[kaffe,snack,wasser],
-                backgroundColor:["#6f4e37","silver","#4da6ff"]
-            }]
-        },
-        options:{
-            plugins:{ legend:{labels:{color:"white"}} },
-            cutout:"60%"
-        }
-    });
-}
-
-function drawVergleich(current,last){
-    if(vergleichChart) vergleichChart.destroy();
-
-    vergleichChart = new Chart(document.getElementById("vergleichChart"),{
-        type:"bar",
-        data:{
-            labels:["Vormonat","Aktuell"],
-            datasets:[{
-                data:[last,current]
-            }]
-        }
-    });
-}
-
 function exportPDF(){
-    const { jsPDF } = window.jspdf;
-    let doc = new jsPDF();
-
-    doc.text("Provisionsbericht",20,20);
-    doc.text(monat.innerText,20,30);
-    doc.text(trend.innerText,20,40);
-
-    doc.save("bericht.pdf");
+const{jsPDF}=window.jspdf;
+let doc=new jsPDF();
+let y=20;
+doc.setFontSize(16);
+doc.text("Provisionsbericht",20,y);y+=10;
+doc.setFontSize(12);
+doc.text(monat.innerText,20,y);y+=10;
+doc.text(trend.innerText,20,y);y+=10;
+doc.text("Kategorien:",20,y);y+=10;
+doc.text(stats.innerText,20,y);y+=15;
+doc.text("Geräte:",20,y);y+=10;
+doc.text(anzahl.innerText,20,y);y+=15;
+doc.text("Wochen:",20,y);y+=10;
+doc.text(wochen.innerText,20,y);y+=15;
+doc.addPage();
+doc.text("Einträge:",20,20);
+let yy=30;
+data.forEach(e=>{
+doc.text(e.datum+" | "+e.produkt+" | "+e.prov.toFixed(2)+"€",20,yy);
+yy+=8;
+if(yy>280){doc.addPage();yy=20;}});
+doc.save("bericht.pdf");
 }
-
 let chartEl=document.getElementById("chart");
-
+let vergleichChartEl=document.getElementById("vergleichChart");
 fillMonate();
 update();
 </script>
-
 </body>
 </html>
