@@ -29,6 +29,13 @@ input, select {
   border: 1px solid #ccc;
 }
 
+label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 10px;
+  display: block;
+}
+
 button {
   width: 100%;
   padding: 10px;
@@ -81,16 +88,21 @@ li {
 
   <button class="mic" onclick="startRecognition()">🎙️ Sprechen</button>
 
+  <label>📝 Aufgabe</label>
   <input type="text" id="taskInput" placeholder="Aufgabe eingeben">
 
+  <label>⚡ Priorität (optional)</label>
   <select id="priority">
-    <option value="">Priorität (optional)</option>
+    <option value="">Keine</option>
     <option value="high">🔴 Hoch</option>
     <option value="medium">🟠 Mittel</option>
     <option value="low">🟢 Niedrig</option>
   </select>
 
+  <label for="dueDate">📅 Fälligkeitsdatum (optional)</label>
   <input type="date" id="dueDate">
+
+  <label for="reminderTime">⏰ Erinnerungszeit (optional)</label>
   <input type="time" id="reminderTime">
 
   <button class="add" onclick="addTask()">➕ Hinzufügen</button>
@@ -176,7 +188,7 @@ function render() {
     let metaText = "";
     if (task.priority) metaText += "Prio: " + task.priority + " ";
     if (task.dueDate) metaText += "| Fällig: " + task.dueDate + " ";
-    if (task.reminder) metaText += "| ⏰ " + task.reminder;
+    if (task.reminder) metaText += "| ⏰ " + new Date(task.reminder).toLocaleString();
 
     meta.textContent = metaText;
 
@@ -218,14 +230,28 @@ function addTask(textFromVoice = null) {
 
 function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return alert("Nicht unterstützt");
 
-  const rec = new SpeechRecognition();
-  rec.lang = "de-DE";
-  rec.start();
+  if (!SpeechRecognition) {
+    alert("❌ Sprachaufnahme nicht unterstützt");
+    return;
+  }
 
-  rec.onresult = e => {
-    addTask(e.results[0][0].transcript);
+  const recognition = new SpeechRecognition();
+  recognition.lang = "de-DE";
+
+  recognition.start();
+
+  recognition.onstart = () => {
+    alert("🎤 Ich höre zu...");
+  };
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    addTask(text);
+  };
+
+  recognition.onerror = (event) => {
+    alert("Fehler: " + event.error);
   };
 }
 
