@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mail Vorlagen</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+button {
+  width: 90%;
+  max-width: 400px;
+  margin: 10px;
+  padding: 15px;
+  border-radius: 10px;
+  border: none;
+  color: white;
+  font-size: 16px;
+}
+
+.kva { background: #2563eb; }
+.deinstall { background: #dc2626; }
+</style>
+</head>
+
+<body>
+
+<h2>📧 Mail Vorlagen</h2>
+
+<!-- 🔵 KVA -->
+<button class="kva" onclick="sendKVA()">
+📄 KVA anfordern
+</button>
+
+<!-- 🔴 DeInstallation -->
+<button class="deinstall" onclick="sendDeinstall()">
+🚚 DeInstallation / Abholung
+</button>
+
+<script>
+
+// 🔵 KVA MAIL
+function sendKVA(){
+  const email = "Oliver.jonischkeit@coffee-perfect.de";
+  const subject = "Bitte erstellt einen KVA";
+
+  const body =
+`Guten Tag,
+
+bitte erstellt einen KVA für folgenden Kunden:
+
+-----------------------------------
+Kundennummer:
+Name:
+Email:
+Tele:
+
+Teile:
+1.
+2.
+3.
+4.
+-----------------------------------
+
+Mit freundlichen Grüßen`;
+
+  window.location.href =
+    "mailto:" + email +
+    "?subject=" + encodeURIComponent(subject) +
+    "&body=" + encodeURIComponent(body);
+}
+
+
+// 🔴 DEINSTALL MAIL
+function sendDeinstall(){
+  const email = "ollijoni123123@gmail.com";
+  const subject = "Abholung nach DeInstallation";
+
+  const body =
+`Guten Tag,
+
+bitte holt folgendes Gerät:
+
+Bei Kunde:
+Ab:
+
+Mit freundlichen Grüßen`;
+
+  window.location.href =
+    "mailto:" + email +
+    "?subject=" + encodeURIComponent(subject) +
+    "&body=" + encodeURIComponent(body);
+}
+
+</script>
+
+</body>
+</html>
