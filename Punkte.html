@@ -21,15 +21,25 @@ button, input {
   padding: 10px;
   border-radius: 10px;
   border: none;
-}
-
-button {
-  background: #2563eb;
   color: white;
 }
 
 .section {
   margin-top: 25px;
+}
+
+/* 🔥 GRID FÜR 3 BUTTONS */
+#buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 400px;
+  margin: auto;
+}
+
+.group-space {
+  grid-column: span 3;
+  height: 15px;
 }
 
 .entry {
@@ -44,8 +54,6 @@ button {
 
 .delete {
   background: red;
-  padding: 5px 10px;
-  border-radius: 8px;
 }
 
 canvas {
@@ -77,6 +85,13 @@ canvas {
 </div>
 
 <div class="section">
+  <h3>👨‍💼 Chef Abgleich</h3>
+  <input type="number" id="bossInput">
+  <button onclick="saveBoss()">Speichern</button>
+  <div id="compareBoss"></div>
+</div>
+
+<div class="section">
   <h3>📊 Kategorien</h3>
   <canvas id="chart"></canvas>
 </div>
@@ -87,9 +102,9 @@ canvas {
 </div>
 
 <div class="section">
-  <button onclick="exportData()">📄 Export anzeigen</button>
-  <button onclick="createPDF()">📄 PDF erstellen</button>
-  <button onclick="clearAll()">🧹 Alles löschen</button>
+  <button onclick="exportData()">📄 Export</button>
+  <button onclick="createPDF()">📄 PDF</button>
+  <button onclick="clearAll()">🧹 Reset</button>
 </div>
 
 <script>
@@ -97,202 +112,44 @@ const tasks = [
   ["Service Wasser", 1.25, "Service"],
   ["Service Kaffee", 1.25, "Service"],
   ["Service Snack", 1.5, "Service"],
+
   ["Wartung Wasser", 1, "Wartung"],
-  ["Wartung Snack", 0.75, "Wartung"],
   ["Wartung Kaffee", 1, "Wartung"],
+  ["Wartung Snack", 0.75, "Wartung"],
+
   ["Installation Wasser", 2, "Installation"],
-  ["Installation Snack", 2, "Installation"],
   ["Installation Kaffee", 2, "Installation"],
+  ["Installation Snack", 2, "Installation"],
+
   ["BVO", 1.25, "Sonstiges"],
   ["Nachrüstung", 1.25, "Sonstiges"],
   ["Krank", 2.75, "Sonstiges"],
   ["Urlaub", 2.75, "Sonstiges"]
 ];
 
-const datePicker = document.getElementById("datePicker");
-const monthPicker = document.getElementById("monthPicker");
-
-const today = new Date().toISOString().slice(0,10);
-datePicker.value = today;
-monthPicker.value = today.slice(0,7);
-
-function loadData() {
-  return JSON.parse(localStorage.getItem("points") || "{}");
-}
-
-function saveData(data) {
-  localStorage.setItem("points", JSON.stringify(data));
-}
-
-function addTask(name, value, category) {
-  let data = loadData();
-  let date = datePicker.value;
-
-  if (!data[date]) data[date] = [];
-
-  data[date].push({name, value, category});
-  saveData(data);
-  render();
-}
-
-function deleteEntry(index) {
-  let data = loadData();
-  let date = datePicker.value;
-
-  data[date].splice(index, 1);
-
-  if (data[date].length === 0) delete data[date];
-
-  saveData(data);
-  render();
-}
-
-function render() {
-  const data = loadData();
-  const selectedDate = datePicker.value;
-  const selectedMonth = monthPicker.value;
-
-  let daySum = 0;
-  let monthSum = 0;
-
-  let categories = {
-    Service: 0,
-    Wartung: 0,
-    Installation: 0,
-    Sonstiges: 0
-  };
-
-  let dayHtml = "";
-
-  if (data[selectedDate]) {
-    data[selectedDate].forEach((t, i) => {
-      daySum += t.value;
-
-      dayHtml += `
-      <div class="entry">
-        ${t.name} (${t.value})
-        <button class="delete" onclick="deleteEntry(${i})">X</button>
-      </div>`;
-    });
-  }
-
-  Object.keys(data).forEach(date => {
-    if (date.startsWith(selectedMonth)) {
-      data[date].forEach(t => {
-        monthSum += t.value;
-        categories[t.category] += t.value;
-      });
-    }
-  });
-
-  document.getElementById("dayTotal").innerHTML =
-    "Tag: " + daySum.toFixed(2) + " Punkte";
-
-  document.getElementById("dayList").innerHTML = dayHtml;
-
-  document.getElementById("monthTotal").innerHTML =
-    monthSum.toFixed(2) + " Punkte";
-
-  drawChart(categories);
-
-  // Monatsvergleich
-  let prev = new Date(selectedMonth + "-01");
-  prev.setMonth(prev.getMonth() - 1);
-  let prevKey = prev.toISOString().slice(0,7);
-
-  let prevSum = 0;
-
-  Object.keys(data).forEach(date => {
-    if (date.startsWith(prevKey)) {
-      data[date].forEach(t => prevSum += t.value);
-    }
-  });
-
-  document.getElementById("compareMonths").innerHTML =
-    "Aktuell: " + monthSum.toFixed(2) +
-    " | Vormonat: " + prevSum.toFixed(2) +
-    " | Differenz: " + (monthSum - prevSum).toFixed(2);
-}
-
-let chart;
-
-function drawChart(categories) {
-  const ctx = document.getElementById("chart");
-
-  if (chart) chart.destroy();
-
-  chart = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: Object.keys(categories),
-      datasets: [{
-        data: Object.values(categories)
-      }]
-    }
-  });
-}
-
-function exportData() {
-  const data = loadData();
-  const selectedMonth = monthPicker.value;
-
-  let text = "Datum | Tätigkeit | Punkte\n\n";
-
-  Object.keys(data).forEach(date => {
-    if (date.startsWith(selectedMonth)) {
-      data[date].forEach(t => {
-        text += date + " | " + t.name + " | " + t.value + "\n";
-      });
-    }
-  });
-
-  alert(text);
-}
-
-function createPDF() {
-  const data = loadData();
-  const selectedMonth = monthPicker.value;
-
-  let content = "<h2>Punkte Bericht " + selectedMonth + "</h2>";
-
-  let sum = 0;
-
-  Object.keys(data).forEach(date => {
-    if (date.startsWith(selectedMonth)) {
-      data[date].forEach(t => {
-        content += "<p>" + date + " - " + t.name + " (" + t.value + ")</p>";
-        sum += t.value;
-      });
-    }
-  });
-
-  content += "<h3>Gesamt: " + sum.toFixed(2) + " Punkte</h3>";
-
-  let win = window.open("", "", "width=600,height=600");
-  win.document.write(content);
-  win.document.close();
-  win.print();
-}
-
-function clearAll() {
-  if (confirm("Alles löschen?")) {
-    localStorage.removeItem("points");
-    render();
-  }
+function getColor(name){
+  if(name.includes("Wasser")) return "#3b82f6";
+  if(name.includes("Kaffee")) return "#6b3f1d";
+  if(name.includes("Snack")) return "#9ca3af";
+  return "#10b981";
 }
 
 const btnDiv = document.getElementById("buttons");
-tasks.forEach(t => {
+
+tasks.forEach((t,i)=>{
   const btn = document.createElement("button");
   btn.innerText = t[0];
-  btn.onclick = () => addTask(t[0], t[1], t[2]);
+  btn.style.background = getColor(t[0]);
+  btn.onclick = ()=>addTask(t[0], t[1], t[2]);
   btnDiv.appendChild(btn);
+
+  // 🔥 nach jeder 3er Reihe Abstand
+  if((i+1)%3===0){
+    const spacer = document.createElement("div");
+    spacer.className = "group-space";
+    btnDiv.appendChild(spacer);
+  }
 });
-
-datePicker.addEventListener("change", render);
-monthPicker.addEventListener("change", render);
-
-render();
 </script>
 
 </body>
