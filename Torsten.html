@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To-Do Pro+</title>
 
+<link rel="manifest" href="manifest.json">
+
 <style>
 body {
   font-family: Arial;
@@ -78,6 +80,12 @@ li {
 .high { border-left: 5px solid red; }
 .medium { border-left: 5px solid orange; }
 .low { border-left: 5px solid green; }
+
+/* 🔴 Überfällige Aufgaben */
+.overdue {
+  border-left: 5px solid darkred !important;
+  background: #ffe5e5;
+}
 </style>
 </head>
 
@@ -130,7 +138,16 @@ function render() {
 
   tasks.forEach((task, i) => {
     const li = document.createElement("li");
+
     if (task.priority) li.classList.add(task.priority);
+
+    // 🔴 Überfällig prüfen
+    if (task.dueDate && !task.done) {
+      const today = new Date().toISOString().split("T")[0];
+      if (task.dueDate < today) {
+        li.classList.add("overdue");
+      }
+    }
 
     const top = document.createElement("div");
     top.className = "task-top";
@@ -155,7 +172,6 @@ function render() {
     left.appendChild(text);
 
     const actions = document.createElement("div");
-    actions.className = "actions";
 
     const edit = document.createElement("button");
     edit.textContent = "✏️";
@@ -241,9 +257,7 @@ function startRecognition() {
 
   recognition.start();
 
-  recognition.onstart = () => {
-    alert("🎤 Ich höre zu...");
-  };
+  recognition.onstart = () => alert("🎤 Ich höre zu...");
 
   recognition.onresult = (event) => {
     const text = event.results[0][0].transcript;
@@ -255,14 +269,13 @@ function startRecognition() {
   };
 }
 
-// 🔔 Reminder Check
+// 🔔 Reminder
 setInterval(() => {
   const now = new Date();
 
   tasks.forEach(task => {
     if (task.reminder && !task.notified) {
       const time = new Date(task.reminder);
-
       if (now >= time) {
         showNotification(task.text);
         task.notified = true;
@@ -278,6 +291,11 @@ function showNotification(text) {
   } else if (Notification.permission !== "denied") {
     Notification.requestPermission();
   }
+}
+
+// 📱 Service Worker registrieren
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
 }
 
 render();
