@@ -68,6 +68,12 @@ canvas {
   max-width: 400px;
   margin: auto;
 }
+
+/* 🔥 AKTIONS BUTTONS */
+.export { background: #2563eb; }
+.pdf { background: #7c3aed; }
+.save { background: #16a34a; }
+.reset { background: #dc2626; }
 </style>
 </head>
 
@@ -95,7 +101,7 @@ canvas {
 <div class="section">
   <h3>👨‍💼 Chef Abgleich</h3>
   <input type="number" id="bossInput" placeholder="Chef Punkte">
-  <button onclick="saveBoss()">Speichern</button>
+  <button class="save" onclick="saveBoss()">💾 Speichern</button>
   <div id="compareBoss"></div>
 </div>
 
@@ -110,9 +116,9 @@ canvas {
 </div>
 
 <div class="section">
-  <button onclick="exportData()">📄 Export</button>
-  <button onclick="createPDF()">📄 PDF</button>
-  <button onclick="clearAll()">🧹 Reset</button>
+  <button class="export" onclick="exportData()">📄 Export</button>
+  <button class="pdf" onclick="createPDF()">📄 PDF</button>
+  <button class="reset" onclick="clearAll()">🧹 Reset</button>
 </div>
 
 <script>
@@ -304,7 +310,7 @@ function clearAll(){
   }
 }
 
-/* 🔥 BUTTONS IN FIXEN 3ER REIHEN */
+/* 🔥 BUTTONS IN FESTEN 3ER REIHEN */
 const btnDiv = document.getElementById("buttons");
 
 function createRow(groupName) {
