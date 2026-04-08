@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seriennummer Scanner PRO</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+input {
+  padding: 15px;
+  width: 90%;
+  max-width: 400px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: none;
+  margin-top: 15px;
+}
+
+#result {
+  margin-top: 20px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+video {
+  width: 90%;
+  max-width: 400px;
+  margin-top: 20px;
+  border-radius: 10px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📷 Seriennummer Scanner PRO</h2>
+
+<input type="text" id="serialInput" placeholder="Oder manuell eingeben">
+
+<div id="result"></div>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<button onclick="checkSerial()">Manuell prüfen</button>
+
+<script>
+const ranges = [
+  { start: "CP20-20231216-001", end: "CP20-20240428-108" },
+  { start: "CP30-20240128-001", end: "CP30-20240430-048" },
+  { start: "CP60-20240127-001", end: "CP60-20240529-018" }
+];
+
+function parseSerial(serial) {
+  const p = serial.split("-");
+  if (p.length !== 3) return null;
+  return {
+    model: p[0],
+    date: parseInt(p[1]),
+    num: parseInt(p[2])
+  };
+}
+
+function inRange(s, start, end) {
+  if (s.model !== start.model) return false;
+  const v = s.date * 1000 + s.num;
+  const sv = start.date * 1000 + start.num;
+  const ev = end.date * 1000 + end.num;
+  return v >= sv && v <= ev;
+}
+
+function checkSerial() {
+  const input = document.getElementById("serialInput").value.trim();
+  const r = document.getElementById("result");
+
+  const s = parseSerial(input);
+  if (!s) {
+    r.innerHTML = "❌ Ungültig";
+    r.style.color = "orange";
+    return;
+  }
+
+  const hit = ranges.some(range =>
+    inRange(s, parseSerial(range.start), parseSerial(range.end))
+  );
+
+  if (hit) {
+    r.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
+    r.style.color = "red";
+  } else {
+    r.innerHTML = "✅ OK";
+    r.style.color = "lightgreen";
+  }
+}
+
+// 🔥 AUTOMATISCHE KAMERA + OCR
+async function startCamera() {
+  const video = document.getElementById("video");
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
+  });
+
+  video.srcObject = stream;
+
+  setInterval(captureAndScan, 3000); // alle 3 Sekunden scannen
+}
+
+async function captureAndScan() {
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0);
+
+  const result = await Tesseract.recognize(canvas, 'eng');
+
+  let text = result.data.text.toUpperCase();
+
+  console.log("OCR:", text);
+
+  // 🔥 Verbesserter Filter
+  const match = text.match(/CP\s?\d{2}[- ]?\d{8}[- ]?\d{3}/);
+
+  if (match) {
+    let clean = match[0]
+      .replace(/\s/g, "")
+      .replace(/-/g, "-");
+
+    // Format korrigieren
+    clean = clean.replace(/(CP\d{2})(\d{8})(\d{3})/, "$1-$2-$3");
+
+    document.getElementById("serialInput").value = clean;
+
+    checkSerial();
+  }
+}
+
+startCamera();
+</script>
+
+</body>
+</html>
