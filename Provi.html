@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provisionsrechner</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    background: linear-gradient(180deg, #4facfe, #00f2fe);
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    padding: 15px;
+    font-size: 22px;
+}
+
+.container { padding: 10px; }
+
+.card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 12px;
+    background: #4facfe;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.highlight {
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.entry {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+.success { color: green; }
+.error { color: red; }
+
+canvas {
+    width: 100% !important;
+    height: 250px !important;
+}
+</style>
+</head>
+
+<body>
+
+<h1>💰 Provisionsrechner</h1>
+
+<div class="container">
+
+<div class="card">
+    <h3>➕ Eintrag</h3>
+
+    <select id="produkt">
+        <option>Kaffee ☕</option>
+        <option>Snack 🍫</option>
+        <option>Wasser 💧</option>
+    </select>
+
+    <input type="number" id="umsatz" placeholder="Umsatz €">
+    <input type="number" id="provision" placeholder="Provision %">
+    <input type="date" id="datum">
+
+    <button onclick="addEntry()">Speichern</button>
+</div>
+
+<div class="card">
+    <h3>📅 Dieser Monat</h3>
+    <p id="monatSumme" class="highlight">0 €</p>
+</div>
+
+<div class="card">
+    <h3>📊 Letzter Monat</h3>
+    <p id="letzterMonat" class="highlight">0 €</p>
+</div>
+
+<div class="card">
+    <h3>✅ Abgleich</h3>
+
+    <select id="vergleichMonat"></select>
+
+    <input type="number" id="istProvision" placeholder="Ausgezahlt €">
+    <button onclick="checkProvision()">Prüfen</button>
+
+    <p id="checkResult"></p>
+</div>
+
+<div class="card">
+    <h3>📈 Verlauf</h3>
+    <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+    <h3>🗓 Tagesübersicht</h3>
+    <div id="tageListe"></div>
+</div>
+
+</div>
+
+<script>
+let daten = JSON.parse(localStorage.getItem("daten")) || [];
+let chart;
+
+function addEntry() {
+    let produkt = document.getElementById("produkt").value;
+    let umsatz = parseFloat(document.getElementById("umsatz").value);
+    let provision = parseFloat(document.getElementById("provision").value);
+    let datum = document.getElementById("datum").value;
+
+    if (!umsatz || !provision || !datum) {
+        alert("Bitte alles ausfüllen!");
+        return;
+    }
+
+    let provBetrag = umsatz * (provision / 100);
+
+    daten.push({ produkt, umsatz, provision, datum, provBetrag });
+
+    localStorage.setItem("daten", JSON.stringify(daten));
+
+    updateUI();
+}
+
+function updateUI() {
+    let jetzt = new Date();
+    let monat = jetzt.getMonth();
+    let jahr = jetzt.getFullYear();
+
+    let aktuell = 0;
+    let letzter = 0;
+
+    daten.forEach(e => {
+        let d = new Date(e.datum);
+
+        if (d.getMonth() === monat && d.getFullYear() === jahr) {
+            aktuell += e.provBetrag;
+        }
+
+        if (d.getMonth() === monat - 1 && d.getFullYear() === jahr) {
+            letzter += e.provBetrag;
+        }
+    });
+
+    document.getElementById("monatSumme").innerText = aktuell.toFixed(2) + " €";
+    document.getElementById("letzterMonat").innerText = letzter.toFixed(2) + " €";
+
+    fillMonatsDropdown();
+    renderListe();
+    drawChart();
+}
+
+function fillMonatsDropdown() {
+    let select = document.getElementById("vergleichMonat");
+    select.innerHTML = "";
+
+    let monate = {};
+
+    daten.forEach(e => {
+        let d = new Date(e.datum);
+        let key = d.getFullYear() + "-" + d.getMonth();
+        monate[key] = d;
+    });
+
+    Object.values(monate).forEach(d => {
+        let option = document.createElement("option");
+        option.value = d.getFullYear() + "-" + d.getMonth();
+        option.text = d.toLocaleString('de-DE', { month: 'long', year: 'numeric' });
+        select.appendChild(option);
+    });
+}
+
+function checkProvision() {
+    let select = document.getElementById("vergleichMonat").value;
+    let ist = parseFloat(document.getElementById("istProvision").value);
+
+    let [jahr, monat] = select.split("-").map(Number);
+
+    let soll = 0;
+
+    daten.forEach(e => {
+        let d = new Date(e.datum);
+        if (d.getFullYear() === jahr && d.getMonth() === monat) {
+            soll += e.provBetrag;
+        }
+    });
+
+    let diff = ist - soll;
+    let el = document.getElementById("checkResult");
+
+    if (Math.abs(diff) < 0.01) {
+        el.innerHTML = "✅ Passt genau!";
+        el.className = "success";
+    } else {
+        el.innerHTML = "❌ Abweichung: " + diff.toFixed(2) + " €";
+        el.className = "error";
+    }
+}
+
+function renderListe() {
+    let liste = document.getElementById("tageListe");
+    liste.innerHTML = "";
+
+    let sortiert = daten.slice().sort((a,b) => new Date(b.datum) - new Date(a.datum));
+
+    sortiert.forEach(e => {
+        let div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML =
+            "<strong>" + e.datum + "</strong><br>" +
+            e.produkt + " | Umsatz: " + e.umsatz + "€ | Provision: " + e.provBetrag.toFixed(2) + "€";
+        liste.appendChild(div);
+    });
+}
+
+function drawChart() {
+    let labels = daten.map(e => e.datum);
+    let values = daten.map(e => e.provBetrag);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Provision',
+                data: values,
+                fill: true
+            }]
+        }
+    });
+}
+
+updateUI();
+</script>
+
+</body>
+</html>
