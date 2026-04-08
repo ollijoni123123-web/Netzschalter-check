@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scanner ENDSTUFE</title>
+<title>Scanner ENDSTUFE+</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
@@ -33,6 +33,17 @@ input {
   color: white;
 }
 
+button {
+  margin-top: 10px;
+  padding: 12px;
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 16px;
+}
+
 #result {
   margin-top: 15px;
   font-size: 24px;
@@ -51,11 +62,6 @@ video {
   border-radius: 12px;
 }
 
-/* 🔥 Scan-Rahmen */
-.scan-box {
-  position: relative;
-}
-
 .scan-area {
   position: absolute;
   top: 30%;
@@ -64,19 +70,10 @@ video {
   height: 20%;
   border: 3px solid #22c55e;
   border-radius: 10px;
-  box-shadow: 0 0 15px #22c55e;
 }
 
-/* Reset Button */
-button {
-  margin-top: 10px;
-  padding: 12px;
-  width: 100%;
-  border-radius: 12px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  font-size: 16px;
+.scan-box {
+  position: relative;
 }
 </style>
 </head>
@@ -85,9 +82,11 @@ button {
 
 <div class="container">
 
-<h2>📷 Scanner ENDSTUFE</h2>
+<h2>📷 Scanner PRO+</h2>
 
-<input id="serialInput" placeholder="Oder manuell eingeben">
+<input id="serialInput" placeholder="Seriennummer eingeben">
+<button onclick="manualCheck()">🔍 Manuell prüfen</button>
+<button onclick="toggleTorch()">🔦 Taschenlampe</button>
 
 <div id="result"></div>
 
@@ -104,15 +103,42 @@ button {
 
 <script>
 
-// 🔥 NORMALISIERUNG
+let streamTrack;
+let torchOn = false;
+
+// 🔊 Ton
+function beep() {
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play();
+}
+
+// 📳 Vibration
+function vibrate() {
+  if (navigator.vibrate) {
+    navigator.vibrate(200);
+  }
+}
+
+// 🔦 Taschenlampe
+function toggleTorch() {
+  if (!streamTrack) return;
+
+  torchOn = !torchOn;
+
+  streamTrack.applyConstraints({
+    advanced: [{ torch: torchOn }]
+  }).catch(e => {
+    alert("Taschenlampe nicht unterstützt");
+  });
+}
+
+// 🔥 Normalisierung
 function normalizeInput(input) {
-  return input
-    .toUpperCase()
+  return input.toUpperCase()
     .replace(/O/g, "0")
     .replace(/[^A-Z0-9]/g, "");
 }
 
-// 🔥 SERIENNUMMER ERKENNEN
 function extractSerial(text) {
   const cleaned = normalizeInput(text);
   const match = cleaned.match(/(CP\d{2})(\d{8})(\d{3})/);
@@ -160,7 +186,35 @@ function checkSerial(serial) {
     r.innerHTML = "✅ OK";
     r.className = "ok";
   }
+
+  // 🔥 Feedback
+  beep();
+  vibrate();
 }
+
+// 🔧 Manuell
+function manualCheck() {
+  scanning = false;
+
+  const raw = document.getElementById("serialInput").value;
+  const serial = extractSerial(raw);
+
+  if (!serial) {
+    const r = document.getElementById("result");
+    r.innerHTML = "❌ Ungültig";
+    r.className = "warn";
+    return;
+  }
+
+  document.getElementById("serialInput").value = serial;
+  checkSerial(serial);
+}
+
+// Enter Support
+document.getElementById("serialInput")
+  .addEventListener("keypress", function(e) {
+    if (e.key === "Enter") manualCheck();
+  });
 
 // 🎥 Kamera
 let scanning = true;
@@ -172,12 +226,12 @@ async function startCamera() {
     video: { facingMode: "environment" }
   });
 
+  streamTrack = stream.getVideoTracks()[0];
   video.srcObject = stream;
 
   requestAnimationFrame(scanLoop);
 }
 
-// 🔥 LIVE SCAN LOOP
 async function scanLoop() {
   if (!scanning) return;
 
@@ -188,7 +242,6 @@ async function scanLoop() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  // 🔥 Nur Scanbereich (Mitte)
   const sx = canvas.width * 0.1;
   const sy = canvas.height * 0.3;
   const sw = canvas.width * 0.8;
@@ -197,15 +250,12 @@ async function scanLoop() {
   ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
 
   const result = await Tesseract.recognize(canvas, 'eng');
-
-  const text = result.data.text;
-
-  const serial = extractSerial(text);
+  const serial = extractSerial(result.data.text);
 
   if (serial) {
     document.getElementById("serialInput").value = serial;
     checkSerial(serial);
-    scanning = false; // STOP!
+    scanning = false;
     return;
   }
 
@@ -219,7 +269,7 @@ function resetScan() {
   requestAnimationFrame(scanLoop);
 }
 
-// 🚀 START
+// Start
 startCamera();
 
 </script>
