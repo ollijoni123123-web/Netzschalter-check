@@ -31,27 +31,6 @@ button {
 .section {
   margin-top: 25px;
 }
-
-.entry {
-  background: #1e293b;
-  margin: 5px auto;
-  padding: 10px;
-  max-width: 400px;
-  border-radius: 10px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.delete {
-  background: red;
-  padding: 5px 10px;
-  border-radius: 8px;
-}
-
-.compare {
-  margin-top: 10px;
-  font-weight: bold;
-}
 </style>
 </head>
 
@@ -69,29 +48,19 @@ button {
   <h3 id="dayTotal"></h3>
 </div>
 
-<div id="dayList"></div>
-
 <div class="section">
   <h3>📅 Monat gesamt:</h3>
   <div id="monthTotal"></div>
 </div>
 
-<!-- 🔥 CHEF VERGLEICH -->
 <div class="section">
-  <h3>👨‍💼 Chef Abgleich</h3>
-  <input type="number" id="bossInput" placeholder="Chef Punkte eingeben">
-  <button onclick="saveBoss()">Speichern</button>
-  <button onclick="useBoss()">Chef übernehmen</button>
-  <div id="compareResult" class="compare"></div>
-</div>
-
-<div class="section">
-  <h3>📊 Kategorien</h3>
-  <canvas id="chart"></canvas>
+  <h3>📊 Monatsvergleich</h3>
+  <div id="compareMonths"></div>
 </div>
 
 <div class="section">
   <button onclick="exportData()">📄 Export anzeigen</button>
+  <button onclick="createPDF()">📄 PDF erstellen</button>
   <button onclick="clearAll()">🧹 Alles löschen</button>
 </div>
 
@@ -127,33 +96,6 @@ function saveData(data) {
   localStorage.setItem("points", JSON.stringify(data));
 }
 
-function loadBoss() {
-  return JSON.parse(localStorage.getItem("boss") || "{}");
-}
-
-function saveBoss() {
-  let boss = loadBoss();
-  boss[monthPicker.value] = Number(document.getElementById("bossInput").value);
-  localStorage.setItem("boss", JSON.stringify(boss));
-  render();
-}
-
-function useBoss() {
-  let boss = loadBoss();
-  let data = loadData();
-  let month = monthPicker.value;
-
-  if (!boss[month]) return;
-
-  let diff = boss[month];
-
-  data = {}; // alles löschen
-  data[month + "-01"] = [{name: "Chef übernommen", value: diff, category: "Sonstiges"}];
-
-  saveData(data);
-  render();
-}
-
 function addTask(name, value, category) {
   let data = loadData();
   let date = datePicker.value;
@@ -162,113 +104,55 @@ function addTask(name, value, category) {
 
   data[date].push({name, value, category});
   saveData(data);
-
-  render();
-}
-
-function deleteEntry(index) {
-  let data = loadData();
-  let date = datePicker.value;
-
-  data[date].splice(index, 1);
-  if (data[date].length === 0) delete data[date];
-
-  saveData(data);
   render();
 }
 
 function render() {
   const data = loadData();
-  const boss = loadBoss();
-  const selectedDate = datePicker.value;
   const selectedMonth = monthPicker.value;
 
-  let daySum = 0;
   let monthSum = 0;
-
-  let categories = {
-    Service: 0,
-    Wartung: 0,
-    Installation: 0,
-    Sonstiges: 0
-  };
-
-  let dayHtml = "";
-
-  if (data[selectedDate]) {
-    data[selectedDate].forEach((t, i) => {
-      daySum += t.value;
-
-      dayHtml += `
-      <div class="entry">
-        ${t.name} (${t.value})
-        <button class="delete" onclick="deleteEntry(${i})">X</button>
-      </div>`;
-    });
-  }
 
   Object.keys(data).forEach(date => {
     if (date.startsWith(selectedMonth)) {
       data[date].forEach(t => {
         monthSum += t.value;
-        categories[t.category] += t.value;
       });
     }
   });
 
-  document.getElementById("dayTotal").innerHTML =
-    "Tag: " + daySum.toFixed(2) + " Punkte";
-
-  document.getElementById("dayList").innerHTML = dayHtml;
-
   document.getElementById("monthTotal").innerHTML =
     monthSum.toFixed(2) + " Punkte";
 
-  // 🔥 Vergleich
-  if (boss[selectedMonth]) {
-    let diff = (monthSum - boss[selectedMonth]).toFixed(2);
-    let text = "Chef: " + boss[selectedMonth] + " | Du: " + monthSum;
+  // Vergleich
+  let prev = new Date(selectedMonth + "-01");
+  prev.setMonth(prev.getMonth() - 1);
+  let prevKey = prev.toISOString().slice(0,7);
 
-    if (diff == 0) {
-      text += " ✅ passt";
-    } else {
-      text += " ❗ Abweichung: " + diff;
-    }
+  let prevSum = 0;
 
-    document.getElementById("compareResult").innerHTML = text;
-  }
-
-  drawChart(categories);
-}
-
-let chart;
-
-function drawChart(categories) {
-  const ctx = document.getElementById("chart");
-
-  if (chart) chart.destroy();
-
-  chart = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: Object.keys(categories),
-      datasets: [{
-        data: Object.values(categories)
-      }]
+  Object.keys(data).forEach(date => {
+    if (date.startsWith(prevKey)) {
+      data[date].forEach(t => prevSum += t.value);
     }
   });
+
+  document.getElementById("compareMonths").innerHTML =
+    "Aktuell: " + monthSum.toFixed(2) +
+    " | Vormonat: " + prevSum.toFixed(2) +
+    " | Differenz: " + (monthSum - prevSum).toFixed(2);
 }
 
 function exportData() {
   const data = loadData();
   const selectedMonth = monthPicker.value;
 
-  let text = "Datum | Tätigkeit | Punkte | Kategorie\n\n";
+  let text = "Datum | Tätigkeit | Punkte\n\n";
 
   Object.keys(data).forEach(date => {
     if (date.startsWith(selectedMonth)) {
       data[date].forEach(t => {
-        text += date + " | " + t.name + " | " + t.value + " | " + t.category + "\n";
+        text += date + " | " + t.name + " | " + t.value + "\n";
       });
     }
   });
@@ -276,8 +160,33 @@ function exportData() {
   alert(text);
 }
 
+function createPDF() {
+  const data = loadData();
+  const selectedMonth = monthPicker.value;
+
+  let content = "<h2>Punkte Bericht " + selectedMonth + "</h2>";
+
+  let sum = 0;
+
+  Object.keys(data).forEach(date => {
+    if (date.startsWith(selectedMonth)) {
+      data[date].forEach(t => {
+        content += "<p>" + date + " - " + t.name + " (" + t.value + ")</p>";
+        sum += t.value;
+      });
+    }
+  });
+
+  content += "<h3>Gesamt: " + sum.toFixed(2) + " Punkte</h3>";
+
+  let win = window.open("", "", "width=600,height=600");
+  win.document.write(content);
+  win.document.close();
+  win.print();
+}
+
 function clearAll() {
-  if (confirm("Wirklich ALLES löschen?")) {
+  if (confirm("Alles löschen?")) {
     localStorage.removeItem("points");
     render();
   }
@@ -286,13 +195,13 @@ function clearAll() {
 const btnDiv = document.getElementById("buttons");
 tasks.forEach(t => {
   const btn = document.createElement("button");
-  btn.innerText = t[0] + " (" + t[1] + ")";
+  btn.innerText = t[0];
   btn.onclick = () => addTask(t[0], t[1], t[2]);
   btnDiv.appendChild(btn);
 });
 
-datePicker.addEventListener("change", render);
 monthPicker.addEventListener("change", render);
+datePicker.addEventListener("change", render);
 
 render();
 </script>
