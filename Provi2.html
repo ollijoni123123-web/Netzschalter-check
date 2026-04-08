@@ -1,4 +1,3 @@
-}
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -107,20 +106,18 @@ canvas{width:100%!important;height:260px!important;}
 let data = JSON.parse(localStorage.getItem("provData")) || [];
 let chart, vergleichChart;
 
-// 👉 Ziel laden
+// 👉 Ziel speichern/laden
+function saveZiel(){
+    localStorage.setItem("zielData", JSON.stringify({
+        wert: ziel.value,
+        typ: zielTyp.value
+    }));
+}
+
 function loadZiel(){
     let z = JSON.parse(localStorage.getItem("zielData")) || {};
     if(z.wert) ziel.value = z.wert;
     if(z.typ) zielTyp.value = z.typ;
-}
-
-// 👉 Ziel speichern
-function saveZiel(){
-    let z = {
-        wert: ziel.value,
-        typ: zielTyp.value
-    };
-    localStorage.setItem("zielData", JSON.stringify(z));
 }
 
 // Datum setzen
@@ -198,23 +195,30 @@ monat.innerText="Provision: "+sum.toFixed(2)+" €";
 // 👉 Fortschritt korrekt
 let zielVal=parseFloat(ziel.value)||0;
 let typ=zielTyp.value;
+
 let currentValue = typ==="umsatz" ? umsatzSum : sum;
 
+// 👉 echter Prozentwert
 let percent = zielVal>0 ? (currentValue/zielVal)*100 : 0;
-let displayPercent = Math.min(percent,100);
+
+// 👉 nur für Balken begrenzen
+let barWidth = Math.min(percent,100);
 
 let bar=progressBar;
 bar.className="progress-bar";
 
+// Farben
 if(percent>=120){bar.classList.add("purple");}
 else if(percent>=100){bar.classList.add("green");}
 else if(percent>=50){bar.classList.add("yellow");}
 else{bar.classList.add("red");}
 
-bar.style.width=displayPercent+"%";
+// Balkenbreite
+bar.style.width=barWidth+"%";
 
+// 👉 WICHTIG: echter Prozentwert anzeigen!
 bar.innerText =
-displayPercent.toFixed(0)+"% ("+
+percent.toFixed(0)+"% ("+
 currentValue.toFixed(0)+"€ / "+
 zielVal.toFixed(0)+"€)";
 
@@ -270,11 +274,11 @@ data:{labels:["Vormonat","Aktuell"],datasets:[{data:[l,c]}]}
 let chartEl=document.getElementById("chart");
 let vergleichChartEl=document.getElementById("vergleichChart");
 
-// 👉 INIT
+// INIT
 loadZiel();
 fillMonate();
 update();
 </script>
 
 </body>
-</html
+</html>
