@@ -2,72 +2,56 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seriennummer Checker</title>
-
-<link rel="manifest" href="manifest.json">
+<title>Seriennummer Prüfer PRO</title>
 
 <style>
 body {
   font-family: Arial;
-  background: #0f172a;
-  color: white;
+  background: #f4f4f4;
   text-align: center;
-  padding: 30px;
-}
-
-h1 {
-  margin-bottom: 30px;
+  padding: 40px;
 }
 
 input {
-  padding: 15px;
-  width: 90%;
-  max-width: 400px;
-  font-size: 18px;
-  border-radius: 10px;
-  border: none;
+  padding: 12px;
+  width: 320px;
+  font-size: 16px;
 }
 
 button {
-  margin-top: 15px;
-  padding: 15px 30px;
-  font-size: 18px;
-  border-radius: 10px;
-  border: none;
-  background: #2563eb;
-  color: white;
+  padding: 12px 20px;
+  font-size: 16px;
+  margin-left: 10px;
 }
 
 #result {
-  margin-top: 25px;
-  font-size: 24px;
+  margin-top: 20px;
+  font-size: 22px;
   font-weight: bold;
 }
 
 .history {
   margin-top: 40px;
-  text-align: left;
   max-width: 400px;
   margin-left: auto;
   margin-right: auto;
+  text-align: left;
 }
 
 .history div {
-  background: #1e293b;
-  padding: 10px;
+  background: #ddd;
+  padding: 8px;
   margin-top: 5px;
-  border-radius: 8px;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🔧 Seriennummer Prüfer</h1>
+<h1>🔧 Seriennummer Prüfer PRO</h1>
 
-<input type="text" id="serialInput" placeholder="z.B. CP20-20240101-050">
-<br>
+<input type="text" id="serialInput" placeholder="Seriennummer eingeben">
 <button onclick="checkSerial()">Prüfen</button>
 
 <div id="result"></div>
@@ -75,68 +59,98 @@ button {
 <div class="history" id="history"></div>
 
 <script>
-function parseSerial(serial) {
-  const parts = serial.split("-");
-  if (parts.length !== 3) return null;
 
+// 🔥 intelligente Bereinigung
+function normalizeInput(input) {
+  let text = input.toUpperCase();
+
+  // O → 0 ersetzen
+  text = text.replace(/O/g, "0");
+
+  // alles außer Buchstaben/Zahlen entfernen
+  text = text.replace(/[^A-Z0-9]/g, "");
+
+  return text;
+}
+
+// 🔥 Seriennummer extrahieren
+function extractSerial(input) {
+  const cleaned = normalizeInput(input);
+
+  const match = cleaned.match(/(CP\d{2})(\d{8})(\d{3})/);
+
+  if (!match) return null;
+
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function parseSerial(serial) {
+  const p = serial.split("-");
   return {
-    model: parts[0],
-    date: parseInt(parts[1]),
-    number: parseInt(parts[2])
+    model: p[0],
+    date: parseInt(p[1]),
+    num: parseInt(p[2])
   };
 }
 
-function isInRange(serial, start, end) {
-  if (serial.model !== start.model) return false;
+function inRange(s, start, end) {
+  if (s.model !== start.model) return false;
 
-  const val = serial.date * 1000 + serial.number;
-  const startVal = start.date * 1000 + start.number;
-  const endVal = end.date * 1000 + end.number;
+  const v = s.date * 1000 + s.num;
+  const sv = start.date * 1000 + start.num;
+  const ev = end.date * 1000 + end.num;
 
-  return val >= startVal && val <= endVal;
+  return v >= sv && v <= ev;
 }
 
 const ranges = [
-  { start: parseSerial("CP20-20231216-001"), end: parseSerial("CP20-20240428-108") },
-  { start: parseSerial("CP30-20240128-001"), end: parseSerial("CP30-20240430-048") },
-  { start: parseSerial("CP60-20240127-001"), end: parseSerial("CP60-20240529-018") }
+  ["CP20-20231216-001", "CP20-20240428-108"],
+  ["CP30-20240128-001", "CP30-20240430-048"],
+  ["CP60-20240127-001", "CP60-20240529-018"]
 ];
 
 function checkSerial() {
-  const input = document.getElementById("serialInput").value.trim();
+  const raw = document.getElementById("serialInput").value;
   const resultDiv = document.getElementById("result");
 
-  const serial = parseSerial(input);
+  const serial = extractSerial(raw);
 
   if (!serial) {
-    resultDiv.innerHTML = "❌ Ungültige Seriennummer";
+    resultDiv.innerHTML = "❌ Seriennummer nicht erkannt";
     resultDiv.style.color = "orange";
     return;
   }
 
-  const needs = ranges.some(r => isInRange(serial, r.start, r.end));
+  document.getElementById("serialInput").value = serial;
 
-  if (needs) {
+  const s = parseSerial(serial);
+
+  const hit = ranges.some(r =>
+    inRange(s, parseSerial(r[0]), parseSerial(r[1]))
+  );
+
+  if (hit) {
     resultDiv.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
     resultDiv.style.color = "red";
   } else {
-    resultDiv.innerHTML = "✅ Alles OK";
-    resultDiv.style.color = "lightgreen";
+    resultDiv.innerHTML = "✅ Kein Tausch erforderlich";
+    resultDiv.style.color = "green";
   }
 
-  saveHistory(input, needs);
+  saveHistory(serial, hit);
 }
 
+// 📋 Verlauf speichern
 function saveHistory(serial, status) {
   let history = JSON.parse(localStorage.getItem("history") || "[]");
 
   history.unshift({
     serial,
-    status: status ? "TAUSCH" : "OK",
-    time: new Date().toLocaleString()
+    status: status ? "TAUSCH" : "OK"
   });
 
   history = history.slice(0, 10);
+
   localStorage.setItem("history", JSON.stringify(history));
 
   renderHistory();
@@ -149,11 +163,18 @@ function renderHistory() {
   historyDiv.innerHTML = "<h3>Letzte Prüfungen</h3>";
 
   history.forEach(item => {
-    historyDiv.innerHTML += `<div>${item.serial} → ${item.status}</div>`;
+    const div = document.createElement("div");
+    div.innerText = `${item.serial} → ${item.status}`;
+    div.onclick = () => {
+      document.getElementById("serialInput").value = item.serial;
+      checkSerial();
+    };
+    historyDiv.appendChild(div);
   });
 }
 
 renderHistory();
+
 </script>
 
 </body>
