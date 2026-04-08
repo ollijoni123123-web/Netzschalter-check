@@ -19,9 +19,7 @@ body {
   margin: auto;
 }
 
-h1 {
-  text-align: center;
-}
+h1 { text-align: center; }
 
 input, select {
   width: 100%;
@@ -32,7 +30,6 @@ input, select {
 }
 
 label {
-  font-size: 14px;
   font-weight: bold;
   margin-top: 10px;
   display: block;
@@ -62,15 +59,11 @@ li {
 .task-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
 .done { text-decoration: line-through; color: gray; }
 
-.meta {
-  font-size: 12px;
-  color: #555;
-}
+.meta { font-size: 12px; }
 
 .actions button {
   width: auto;
@@ -81,10 +74,30 @@ li {
 .medium { border-left: 5px solid orange; }
 .low { border-left: 5px solid green; }
 
-/* 🔴 Überfällige Aufgaben */
 .overdue {
   border-left: 5px solid darkred !important;
   background: #ffe5e5;
+}
+
+/* 🔥 MODAL */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
 }
 </style>
 </head>
@@ -97,9 +110,9 @@ li {
   <button class="mic" onclick="startRecognition()">🎙️ Sprechen</button>
 
   <label>📝 Aufgabe</label>
-  <input type="text" id="taskInput" placeholder="Aufgabe eingeben">
+  <input type="text" id="taskInput">
 
-  <label>⚡ Priorität (optional)</label>
+  <label>⚡ Priorität</label>
   <select id="priority">
     <option value="">Keine</option>
     <option value="high">🔴 Hoch</option>
@@ -107,10 +120,10 @@ li {
     <option value="low">🟢 Niedrig</option>
   </select>
 
-  <label for="dueDate">📅 Fälligkeitsdatum (optional)</label>
+  <label>📅 Datum</label>
   <input type="date" id="dueDate">
 
-  <label for="reminderTime">⏰ Erinnerungszeit (optional)</label>
+  <label>⏰ Uhrzeit</label>
   <input type="time" id="reminderTime">
 
   <button class="add" onclick="addTask()">➕ Hinzufügen</button>
@@ -122,8 +135,36 @@ li {
   <ul id="doneList"></ul>
 </div>
 
+<!-- 🔥 MODAL -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <h3>✏️ Aufgabe bearbeiten</h3>
+
+    <label>📝 Aufgabe</label>
+    <input type="text" id="editText">
+
+    <label>⚡ Priorität</label>
+    <select id="editPriority">
+      <option value="">Keine</option>
+      <option value="high">🔴 Hoch</option>
+      <option value="medium">🟠 Mittel</option>
+      <option value="low">🟢 Niedrig</option>
+    </select>
+
+    <label>📅 Datum</label>
+    <input type="date" id="editDate">
+
+    <label>⏰ Uhrzeit</label>
+    <input type="time" id="editTime">
+
+    <button onclick="saveEdit()">💾 Speichern</button>
+    <button onclick="closeModal()">❌ Abbrechen</button>
+  </div>
+</div>
+
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let currentEditIndex = null;
 
 function save() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
@@ -141,12 +182,9 @@ function render() {
 
     if (task.priority) li.classList.add(task.priority);
 
-    // 🔴 Überfällig prüfen
     if (task.dueDate && !task.done) {
       const today = new Date().toISOString().split("T")[0];
-      if (task.dueDate < today) {
-        li.classList.add("overdue");
-      }
+      if (task.dueDate < today) li.classList.add("overdue");
     }
 
     const top = document.createElement("div");
@@ -175,14 +213,7 @@ function render() {
 
     const edit = document.createElement("button");
     edit.textContent = "✏️";
-    edit.onclick = () => {
-      const newText = prompt("Bearbeiten:", task.text);
-      if (newText) {
-        task.text = newText;
-        save();
-        render();
-      }
-    };
+    edit.onclick = () => openEditModal(i);
 
     const del = document.createElement("button");
     del.textContent = "🗑️";
@@ -199,11 +230,10 @@ function render() {
     top.appendChild(actions);
 
     const meta = document.createElement("div");
-    meta.className = "meta";
-
     let metaText = "";
+
     if (task.priority) metaText += "Prio: " + task.priority + " ";
-    if (task.dueDate) metaText += "| Fällig: " + task.dueDate + " ";
+    if (task.dueDate) metaText += "| " + task.dueDate + " ";
     if (task.reminder) metaText += "| ⏰ " + new Date(task.reminder).toLocaleString();
 
     meta.textContent = metaText;
@@ -222,12 +252,10 @@ function addTask(textFromVoice = null) {
 
   const priority = document.getElementById("priority").value;
   const dueDate = document.getElementById("dueDate").value;
-  const reminderTime = document.getElementById("reminderTime").value;
+  const time = document.getElementById("reminderTime").value;
 
   let reminder = null;
-  if (dueDate && reminderTime) {
-    reminder = dueDate + "T" + reminderTime;
-  }
+  if (dueDate && time) reminder = dueDate + "T" + time;
 
   tasks.push({
     text,
@@ -240,44 +268,68 @@ function addTask(textFromVoice = null) {
 
   save();
   render();
+}
 
-  document.getElementById("taskInput").value = "";
+function openEditModal(index) {
+  currentEditIndex = index;
+  const task = tasks[index];
+
+  document.getElementById("editText").value = task.text;
+  document.getElementById("editPriority").value = task.priority || "";
+  document.getElementById("editDate").value = task.dueDate || "";
+  document.getElementById("editTime").value =
+    task.reminder ? task.reminder.split("T")[1] : "";
+
+  document.getElementById("editModal").style.display = "flex";
+}
+
+function closeModal() {
+  document.getElementById("editModal").style.display = "none";
+}
+
+function saveEdit() {
+  const task = tasks[currentEditIndex];
+
+  task.text = document.getElementById("editText").value;
+  task.priority = document.getElementById("editPriority").value;
+  task.dueDate = document.getElementById("editDate").value;
+
+  const time = document.getElementById("editTime").value;
+
+  if (task.dueDate && time) {
+    task.reminder = task.dueDate + "T" + time;
+    task.notified = false;
+  } else {
+    task.reminder = null;
+  }
+
+  save();
+  render();
+  closeModal();
 }
 
 function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    alert("❌ Sprachaufnahme nicht unterstützt");
+    alert("Nicht unterstützt");
     return;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = "de-DE";
+  const rec = new SpeechRecognition();
+  rec.lang = "de-DE";
+  rec.start();
 
-  recognition.start();
-
-  recognition.onstart = () => alert("🎤 Ich höre zu...");
-
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-    addTask(text);
-  };
-
-  recognition.onerror = (event) => {
-    alert("Fehler: " + event.error);
-  };
+  rec.onresult = e => addTask(e.results[0][0].transcript);
 }
 
-// 🔔 Reminder
+// Reminder
 setInterval(() => {
   const now = new Date();
-
   tasks.forEach(task => {
     if (task.reminder && !task.notified) {
-      const time = new Date(task.reminder);
-      if (now >= time) {
-        showNotification(task.text);
+      if (now >= new Date(task.reminder)) {
+        new Notification(task.text);
         task.notified = true;
         save();
       }
@@ -285,15 +337,7 @@ setInterval(() => {
   });
 }, 30000);
 
-function showNotification(text) {
-  if (Notification.permission === "granted") {
-    new Notification("🔔 Aufgabe", { body: text });
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission();
-  }
-}
-
-// 📱 Service Worker registrieren
+// Service Worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
 }
