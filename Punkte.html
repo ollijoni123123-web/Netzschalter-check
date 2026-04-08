@@ -31,6 +31,27 @@ button {
 .section {
   margin-top: 25px;
 }
+
+.entry {
+  background: #1e293b;
+  margin: 5px auto;
+  padding: 10px;
+  max-width: 400px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.delete {
+  background: red;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+canvas {
+  max-width: 400px;
+  margin: auto;
+}
 </style>
 </head>
 
@@ -48,9 +69,16 @@ button {
   <h3 id="dayTotal"></h3>
 </div>
 
+<div id="dayList"></div>
+
 <div class="section">
   <h3>📅 Monat gesamt:</h3>
   <div id="monthTotal"></div>
+</div>
+
+<div class="section">
+  <h3>📊 Kategorien</h3>
+  <canvas id="chart"></canvas>
 </div>
 
 <div class="section">
@@ -107,24 +135,67 @@ function addTask(name, value, category) {
   render();
 }
 
+function deleteEntry(index) {
+  let data = loadData();
+  let date = datePicker.value;
+
+  data[date].splice(index, 1);
+
+  if (data[date].length === 0) delete data[date];
+
+  saveData(data);
+  render();
+}
+
 function render() {
   const data = loadData();
+  const selectedDate = datePicker.value;
   const selectedMonth = monthPicker.value;
 
+  let daySum = 0;
   let monthSum = 0;
+
+  let categories = {
+    Service: 0,
+    Wartung: 0,
+    Installation: 0,
+    Sonstiges: 0
+  };
+
+  let dayHtml = "";
+
+  if (data[selectedDate]) {
+    data[selectedDate].forEach((t, i) => {
+      daySum += t.value;
+
+      dayHtml += `
+      <div class="entry">
+        ${t.name} (${t.value})
+        <button class="delete" onclick="deleteEntry(${i})">X</button>
+      </div>`;
+    });
+  }
 
   Object.keys(data).forEach(date => {
     if (date.startsWith(selectedMonth)) {
       data[date].forEach(t => {
         monthSum += t.value;
+        categories[t.category] += t.value;
       });
     }
   });
 
+  document.getElementById("dayTotal").innerHTML =
+    "Tag: " + daySum.toFixed(2) + " Punkte";
+
+  document.getElementById("dayList").innerHTML = dayHtml;
+
   document.getElementById("monthTotal").innerHTML =
     monthSum.toFixed(2) + " Punkte";
 
-  // Vergleich
+  drawChart(categories);
+
+  // Monatsvergleich
   let prev = new Date(selectedMonth + "-01");
   prev.setMonth(prev.getMonth() - 1);
   let prevKey = prev.toISOString().slice(0,7);
@@ -141,6 +212,24 @@ function render() {
     "Aktuell: " + monthSum.toFixed(2) +
     " | Vormonat: " + prevSum.toFixed(2) +
     " | Differenz: " + (monthSum - prevSum).toFixed(2);
+}
+
+let chart;
+
+function drawChart(categories) {
+  const ctx = document.getElementById("chart");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: Object.keys(categories),
+      datasets: [{
+        data: Object.values(categories)
+      }]
+    }
+  });
 }
 
 function exportData() {
@@ -200,8 +289,8 @@ tasks.forEach(t => {
   btnDiv.appendChild(btn);
 });
 
-monthPicker.addEventListener("change", render);
 datePicker.addEventListener("change", render);
+monthPicker.addEventListener("change", render);
 
 render();
 </script>
