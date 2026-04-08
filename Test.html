@@ -9,50 +9,58 @@
 
 <style>
 body {
-  font-family: Arial;
-  background: #0f172a;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
   color: white;
   text-align: center;
   padding: 20px;
 }
 
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 20px;
+  max-width: 420px;
+  margin: auto;
+}
+
 input {
+  width: 100%;
   padding: 15px;
-  width: 90%;
-  max-width: 400px;
   font-size: 18px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
-  margin-top: 15px;
+  margin-top: 10px;
+  background: #0f172a;
+  color: white;
 }
 
 #result {
-  margin-top: 20px;
+  margin-top: 15px;
   font-size: 24px;
   font-weight: bold;
+  padding: 10px;
+  border-radius: 12px;
 }
+
+.ok { background: #064e3b; color: #34d399; }
+.bad { background: #7f1d1d; color: #f87171; }
+.warn { background: #78350f; color: #fbbf24; }
 
 video {
-  width: 90%;
-  max-width: 400px;
-  margin-top: 20px;
-  border-radius: 10px;
-}
-
-button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  background: #2563eb;
-  color: white;
+  width: 100%;
+  margin-top: 15px;
+  border-radius: 12px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📷 Seriennummer Scanner PRO</h2>
+<div class="card">
+
+<h2>📷 Seriennummer Scanner</h2>
 
 <input type="text" id="serialInput" placeholder="Oder manuell eingeben">
 
@@ -61,18 +69,28 @@ button {
 <video id="video" autoplay playsinline></video>
 <canvas id="canvas" style="display:none;"></canvas>
 
-<button onclick="checkSerial()">Manuell prüfen</button>
+</div>
 
 <script>
-const ranges = [
-  { start: "CP20-20231216-001", end: "CP20-20240428-108" },
-  { start: "CP30-20240128-001", end: "CP30-20240430-048" },
-  { start: "CP60-20240127-001", end: "CP60-20240529-018" }
-];
+
+// 🔥 INPUT NORMALISIERUNG (sehr wichtig)
+function normalizeInput(input) {
+  let text = input.toUpperCase();
+  text = text.replace(/O/g, "0");
+  text = text.replace(/[^A-Z0-9]/g, "");
+  return text;
+}
+
+// 🔥 SERIENNUMMER FINDEN (auch bei Müll drumherum)
+function extractSerial(text) {
+  const cleaned = normalizeInput(text);
+  const match = cleaned.match(/(CP\d{2})(\d{8})(\d{3})/);
+  if (!match) return null;
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
 
 function parseSerial(serial) {
   const p = serial.split("-");
-  if (p.length !== 3) return null;
   return {
     model: p[0],
     date: parseInt(p[1]),
@@ -82,37 +100,39 @@ function parseSerial(serial) {
 
 function inRange(s, start, end) {
   if (s.model !== start.model) return false;
+
   const v = s.date * 1000 + s.num;
   const sv = start.date * 1000 + start.num;
   const ev = end.date * 1000 + end.num;
+
   return v >= sv && v <= ev;
 }
 
-function checkSerial() {
-  const input = document.getElementById("serialInput").value.trim();
-  const r = document.getElementById("result");
+const ranges = [
+  ["CP20-20231216-001", "CP20-20240428-108"],
+  ["CP30-20240128-001", "CP30-20240430-048"],
+  ["CP60-20240127-001", "CP60-20240529-018"]
+];
 
-  const s = parseSerial(input);
-  if (!s) {
-    r.innerHTML = "❌ Ungültig";
-    r.style.color = "orange";
-    return;
-  }
+function checkSerial(serial) {
+  const resultDiv = document.getElementById("result");
 
-  const hit = ranges.some(range =>
-    inRange(s, parseSerial(range.start), parseSerial(range.end))
+  const s = parseSerial(serial);
+
+  const hit = ranges.some(r =>
+    inRange(s, parseSerial(r[0]), parseSerial(r[1]))
   );
 
   if (hit) {
-    r.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
-    r.style.color = "red";
+    resultDiv.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
+    resultDiv.className = "bad";
   } else {
-    r.innerHTML = "✅ OK";
-    r.style.color = "lightgreen";
+    resultDiv.innerHTML = "✅ Kein Tausch erforderlich";
+    resultDiv.className = "ok";
   }
 }
 
-// 🔥 AUTOMATISCHE KAMERA + OCR
+// 🎥 KAMERA START
 async function startCamera() {
   const video = document.getElementById("video");
 
@@ -122,10 +142,16 @@ async function startCamera() {
 
   video.srcObject = stream;
 
-  setInterval(captureAndScan, 3000); // alle 3 Sekunden scannen
+  setInterval(scanFrame, 2000); // alle 2 Sekunden
 }
 
-async function captureAndScan() {
+// 🔍 OCR SCAN
+let scanning = false;
+
+async function scanFrame() {
+  if (scanning) return;
+  scanning = true;
+
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
@@ -137,28 +163,23 @@ async function captureAndScan() {
 
   const result = await Tesseract.recognize(canvas, 'eng');
 
-  let text = result.data.text.toUpperCase();
+  const text = result.data.text;
 
   console.log("OCR:", text);
 
-  // 🔥 Verbesserter Filter
-  const match = text.match(/CP\s?\d{2}[- ]?\d{8}[- ]?\d{3}/);
+  const serial = extractSerial(text);
 
-  if (match) {
-    let clean = match[0]
-      .replace(/\s/g, "")
-      .replace(/-/g, "-");
-
-    // Format korrigieren
-    clean = clean.replace(/(CP\d{2})(\d{8})(\d{3})/, "$1-$2-$3");
-
-    document.getElementById("serialInput").value = clean;
-
-    checkSerial();
+  if (serial) {
+    document.getElementById("serialInput").value = serial;
+    checkSerial(serial);
   }
+
+  scanning = false;
 }
 
+// 🚀 START
 startCamera();
+
 </script>
 
 </body>
