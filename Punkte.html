@@ -62,7 +62,8 @@ canvas {
 </div>
 
 <div class="section">
-  <button onclick="exportData()">📄 Export</button>
+  <button onclick="exportData()">📄 Export anzeigen</button>
+  <button onclick="clearAll()">🧹 Alles löschen</button>
 </div>
 
 <script>
@@ -164,23 +165,24 @@ function exportData() {
   const data = loadData();
   const selectedMonth = monthPicker.value;
 
-  let csv = "Datum,Tätigkeit,Punkte,Kategorie\n";
+  let text = "Datum | Tätigkeit | Punkte | Kategorie\n\n";
 
   Object.keys(data).forEach(date => {
     if (date.startsWith(selectedMonth)) {
       data[date].forEach(t => {
-        csv += date + "," + t.name + "," + t.value + "," + t.category + "\n";
+        text += date + " | " + t.name + " | " + t.value + " | " + t.category + "\n";
       });
     }
   });
 
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+  alert(text);
+}
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "punkte.csv";
-  a.click();
+function clearAll() {
+  if (confirm("Wirklich ALLES löschen?")) {
+    localStorage.removeItem("points");
+    render();
+  }
 }
 
 // Buttons erstellen
