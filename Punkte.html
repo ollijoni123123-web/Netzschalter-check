@@ -16,7 +16,8 @@ body {
   padding: 20px;
 }
 
-button, input {
+/* 🔥 BUTTONS */
+button {
   margin: 5px;
   padding: 10px;
   border-radius: 10px;
@@ -24,11 +25,21 @@ button, input {
   color: white;
 }
 
+/* 🔥 INPUT FIX */
+input {
+  margin: 5px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #1e293b;
+  color: white;
+}
+
 .section {
   margin-top: 25px;
 }
 
-/* 🔥 GRID FÜR 3 BUTTONS */
+/* 🔥 GRID */
 #buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -86,7 +97,7 @@ canvas {
 
 <div class="section">
   <h3>👨‍💼 Chef Abgleich</h3>
-  <input type="number" id="bossInput">
+  <input type="number" id="bossInput" placeholder="Chef Punkte">
   <button onclick="saveBoss()">Speichern</button>
   <div id="compareBoss"></div>
 </div>
@@ -134,6 +145,168 @@ function getColor(name){
   return "#10b981";
 }
 
+const datePicker = document.getElementById("datePicker");
+const monthPicker = document.getElementById("monthPicker");
+
+const today = new Date().toISOString().slice(0,10);
+datePicker.value = today;
+monthPicker.value = today.slice(0,7);
+
+function loadData() {
+  return JSON.parse(localStorage.getItem("points") || "{}");
+}
+
+function saveData(data) {
+  localStorage.setItem("points", JSON.stringify(data));
+}
+
+function loadBoss() {
+  return JSON.parse(localStorage.getItem("boss") || "{}");
+}
+
+function saveBoss() {
+  let boss = loadBoss();
+  boss[monthPicker.value] = Number(document.getElementById("bossInput").value);
+  localStorage.setItem("boss", JSON.stringify(boss));
+  render();
+}
+
+function addTask(name, value, category) {
+  let data = loadData();
+  let date = datePicker.value;
+
+  if (!data[date]) data[date] = [];
+
+  data[date].push({name, value, category});
+  saveData(data);
+  render();
+}
+
+function deleteEntry(index) {
+  let data = loadData();
+  let date = datePicker.value;
+
+  data[date].splice(index, 1);
+  if (data[date].length === 0) delete data[date];
+
+  saveData(data);
+  render();
+}
+
+function render() {
+  const data = loadData();
+  const boss = loadBoss();
+  const selectedDate = datePicker.value;
+  const selectedMonth = monthPicker.value;
+
+  let daySum = 0;
+  let monthSum = 0;
+
+  let categories = {
+    Service: 0,
+    Wartung: 0,
+    Installation: 0,
+    Sonstiges: 0
+  };
+
+  let html = "";
+
+  if (data[selectedDate]) {
+    data[selectedDate].forEach((t,i)=>{
+      daySum += t.value;
+
+      html += `
+      <div class="entry">
+        ${t.name} (${t.value})
+        <button class="delete" onclick="deleteEntry(${i})">X</button>
+      </div>`;
+    });
+  }
+
+  Object.keys(data).forEach(date=>{
+    if(date.startsWith(selectedMonth)){
+      data[date].forEach(t=>{
+        monthSum += t.value;
+        categories[t.category]+=t.value;
+      });
+    }
+  });
+
+  document.getElementById("dayTotal").innerHTML =
+    "Tag: "+daySum.toFixed(2);
+
+  document.getElementById("dayList").innerHTML = html;
+
+  document.getElementById("monthTotal").innerHTML =
+    monthSum.toFixed(2)+" Punkte";
+
+  drawChart(categories);
+
+  if(boss[selectedMonth]){
+    let diff = (monthSum - boss[selectedMonth]).toFixed(2);
+    document.getElementById("compareBoss").innerHTML =
+      "Chef: "+boss[selectedMonth]+" | Du: "+monthSum+" | Diff: "+diff;
+  }
+
+  let prev = new Date(selectedMonth+"-01");
+  prev.setMonth(prev.getMonth()-1);
+  let prevKey = prev.toISOString().slice(0,7);
+
+  let prevSum = 0;
+
+  Object.keys(data).forEach(date=>{
+    if(date.startsWith(prevKey)){
+      data[date].forEach(t=>prevSum+=t.value);
+    }
+  });
+
+  document.getElementById("compareMonths").innerHTML =
+    "Aktuell: "+monthSum+
+    " | Vormonat: "+prevSum+
+    " | Diff: "+(monthSum-prevSum).toFixed(2);
+}
+
+let chart;
+
+function drawChart(categories){
+  const ctx = document.getElementById("chart");
+  if(chart) chart.destroy();
+
+  chart = new Chart(ctx,{
+    type:"doughnut",
+    data:{
+      labels:Object.keys(categories),
+      datasets:[{data:Object.values(categories)}]
+    }
+  });
+}
+
+function exportData(){
+  const data = loadData();
+  let text = "";
+
+  Object.keys(data).forEach(d=>{
+    data[d].forEach(t=>{
+      text += d+" "+t.name+" "+t.value+"\n";
+    });
+  });
+
+  alert(text);
+}
+
+function createPDF(){
+  let win = window.open("");
+  win.document.write("<h2>Punkte Bericht</h2>"+document.body.innerHTML);
+  win.print();
+}
+
+function clearAll(){
+  if(confirm("Alles löschen?")){
+    localStorage.removeItem("points");
+    render();
+  }
+}
+
 const btnDiv = document.getElementById("buttons");
 
 tasks.forEach((t,i)=>{
@@ -143,13 +316,17 @@ tasks.forEach((t,i)=>{
   btn.onclick = ()=>addTask(t[0], t[1], t[2]);
   btnDiv.appendChild(btn);
 
-  // 🔥 nach jeder 3er Reihe Abstand
   if((i+1)%3===0){
     const spacer = document.createElement("div");
     spacer.className = "group-space";
     btnDiv.appendChild(spacer);
   }
 });
+
+datePicker.addEventListener("change",render);
+monthPicker.addEventListener("change",render);
+
+render();
 </script>
 
 </body>
