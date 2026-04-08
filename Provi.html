@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Provisionsrechner</title>
+<title>Provisionsrechner PRO MAX</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -12,16 +12,12 @@ body {
     margin: 0;
     background: linear-gradient(180deg, #4facfe, #00f2fe);
 }
-
 h1 {
     text-align: center;
     color: white;
     padding: 15px;
-    font-size: 22px;
 }
-
 .container { padding: 10px; }
-
 .card {
     background: white;
     padding: 15px;
@@ -29,16 +25,13 @@ h1 {
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
-
 input, select {
     width: 100%;
     padding: 12px;
     margin-top: 8px;
     border-radius: 10px;
     border: 1px solid #ccc;
-    font-size: 16px;
 }
-
 button {
     width: 100%;
     padding: 14px;
@@ -47,25 +40,19 @@ button {
     border-radius: 12px;
     background: #4facfe;
     color: white;
-    font-size: 16px;
     font-weight: bold;
 }
-
-.highlight {
-    font-size: 22px;
-    font-weight: bold;
-    text-align: center;
+.small-btn {
+    width: auto;
+    padding: 6px 10px;
+    margin-top: 5px;
 }
-
 .entry {
-    padding: 10px;
     border-bottom: 1px solid #eee;
-    font-size: 14px;
+    padding: 10px;
 }
-
 .success { color: green; }
 .error { color: red; }
-
 canvas {
     width: 100% !important;
     height: 250px !important;
@@ -75,44 +62,39 @@ canvas {
 
 <body>
 
-<h1>💰 Provisionsrechner</h1>
+<h1>💰 Provisionsrechner PRO MAX</h1>
 
 <div class="container">
 
 <div class="card">
     <h3>➕ Eintrag</h3>
-
     <select id="produkt">
         <option>Kaffee ☕</option>
         <option>Snack 🍫</option>
         <option>Wasser 💧</option>
     </select>
-
     <input type="number" id="umsatz" placeholder="Umsatz €">
     <input type="number" id="provision" placeholder="Provision %">
     <input type="date" id="datum">
-
     <button onclick="addEntry()">Speichern</button>
 </div>
 
 <div class="card">
-    <h3>📅 Dieser Monat</h3>
-    <p id="monatSumme" class="highlight">0 €</p>
+    <h3>📊 Statistik nach Produkt</h3>
+    <p id="stats"></p>
 </div>
 
 <div class="card">
-    <h3>📊 Letzter Monat</h3>
-    <p id="letzterMonat" class="highlight">0 €</p>
+    <h3>📅 Monatsübersicht</h3>
+    <p id="monatSumme"></p>
+    <p id="letzterMonat"></p>
 </div>
 
 <div class="card">
     <h3>✅ Abgleich</h3>
-
     <select id="vergleichMonat"></select>
-
     <input type="number" id="istProvision" placeholder="Ausgezahlt €">
     <button onclick="checkProvision()">Prüfen</button>
-
     <p id="checkResult"></p>
 </div>
 
@@ -122,8 +104,13 @@ canvas {
 </div>
 
 <div class="card">
-    <h3>🗓 Tagesübersicht</h3>
-    <div id="tageListe"></div>
+    <h3>🗓 Einträge</h3>
+    <div id="liste"></div>
+</div>
+
+<div class="card">
+    <h3>📥 Export</h3>
+    <button onclick="exportCSV()">CSV herunterladen</button>
 </div>
 
 </div>
@@ -132,70 +119,96 @@ canvas {
 let daten = JSON.parse(localStorage.getItem("daten")) || [];
 let chart;
 
+const produktEl = document.getElementById("produkt");
+const umsatzEl = document.getElementById("umsatz");
+const provisionEl = document.getElementById("provision");
+const datumEl = document.getElementById("datum");
+
+function save() {
+    localStorage.setItem("daten", JSON.stringify(daten));
+}
+
 function addEntry() {
-    let produkt = document.getElementById("produkt").value;
-    let umsatz = parseFloat(document.getElementById("umsatz").value);
-    let provision = parseFloat(document.getElementById("provision").value);
-    let datum = document.getElementById("datum").value;
+    let produkt = produktEl.value;
+    let umsatz = parseFloat(umsatzEl.value);
+    let provision = parseFloat(provisionEl.value);
+    let datum = datumEl.value;
 
     if (!umsatz || !provision || !datum) {
         alert("Bitte alles ausfüllen!");
         return;
     }
 
-    let provBetrag = umsatz * (provision / 100);
-
-    daten.push({ produkt, umsatz, provision, datum, provBetrag });
-
-    localStorage.setItem("daten", JSON.stringify(daten));
-
-    updateUI();
-}
-
-function updateUI() {
-    let jetzt = new Date();
-    let monat = jetzt.getMonth();
-    let jahr = jetzt.getFullYear();
-
-    let aktuell = 0;
-    let letzter = 0;
-
-    daten.forEach(e => {
-        let d = new Date(e.datum);
-
-        if (d.getMonth() === monat && d.getFullYear() === jahr) {
-            aktuell += e.provBetrag;
-        }
-
-        if (d.getMonth() === monat - 1 && d.getFullYear() === jahr) {
-            letzter += e.provBetrag;
-        }
+    daten.push({
+        id: Date.now(),
+        produkt,
+        umsatz,
+        provision,
+        datum,
+        prov: umsatz * provision / 100
     });
 
-    document.getElementById("monatSumme").innerText = aktuell.toFixed(2) + " €";
-    document.getElementById("letzterMonat").innerText = letzter.toFixed(2) + " €";
+    save();
+    update();
+}
 
-    fillMonatsDropdown();
-    renderListe();
+function update() {
+    let now = new Date();
+    let m = now.getMonth();
+    let y = now.getFullYear();
+
+    let sum = 0;
+    let last = 0;
+
+    let stats = { Kaffee:0, Snack:0, Wasser:0 };
+
+    daten.forEach(d => {
+        let dt = new Date(d.datum);
+
+        if (dt.getMonth() === m && dt.getFullYear() === y) {
+            sum += d.prov;
+        }
+
+        if (dt.getMonth() === m - 1 && dt.getFullYear() === y) {
+            last += d.prov;
+        }
+
+        let key = d.produkt.split(" ")[0];
+        stats[key] += d.prov;
+    });
+
+    document.getElementById("monatSumme").innerText =
+        "Dieser Monat: " + sum.toFixed(2) + " €";
+
+    document.getElementById("letzterMonat").innerText =
+        "Letzter Monat: " + last.toFixed(2) + " €";
+
+    document.getElementById("stats").innerHTML =
+        "☕ Kaffee: " + stats.Kaffee.toFixed(2) + " €<br>" +
+        "🍫 Snack: " + stats.Snack.toFixed(2) + " €<br>" +
+        "💧 Wasser: " + stats.Wasser.toFixed(2) + " €";
+
+    fillDropdown();
+    renderList();
     drawChart();
 }
 
-function fillMonatsDropdown() {
+function fillDropdown() {
     let select = document.getElementById("vergleichMonat");
     select.innerHTML = "";
 
-    let monate = {};
+    let map = {};
 
-    daten.forEach(e => {
-        let d = new Date(e.datum);
-        let key = d.getFullYear() + "-" + d.getMonth();
-        monate[key] = d;
+    daten.forEach(d => {
+        let dt = new Date(d.datum);
+        let key = dt.getFullYear() + "-" + dt.getMonth();
+        map[key] = dt;
     });
 
-    Object.values(monate).forEach(d => {
+    Object.values(map).forEach(dt => {
         let option = document.createElement("option");
-        option.value = d.getFullYear() + "-" + d.getMonth();
-        option.text = d.toLocaleString('de-DE', { month: 'long', year: 'numeric' });
+        option.value = dt.getFullYear() + "-" + dt.getMonth();
+        option.text = dt.toLocaleString("de-DE", { month: "long", year: "numeric" });
         select.appendChild(option);
     });
 }
@@ -208,10 +221,10 @@ function checkProvision() {
 
     let soll = 0;
 
-    daten.forEach(e => {
-        let d = new Date(e.datum);
-        if (d.getFullYear() === jahr && d.getMonth() === monat) {
-            soll += e.provBetrag;
+    daten.forEach(d => {
+        let dt = new Date(d.datum);
+        if (dt.getFullYear() === jahr && dt.getMonth() === monat) {
+            soll += d.prov;
         }
     });
 
@@ -219,50 +232,84 @@ function checkProvision() {
     let el = document.getElementById("checkResult");
 
     if (Math.abs(diff) < 0.01) {
-        el.innerHTML = "✅ Passt genau!";
+        el.innerText = "✅ Passt genau!";
         el.className = "success";
     } else {
-        el.innerHTML = "❌ Abweichung: " + diff.toFixed(2) + " €";
+        el.innerText = "❌ Abweichung: " + diff.toFixed(2) + " €";
         el.className = "error";
     }
 }
 
-function renderListe() {
-    let liste = document.getElementById("tageListe");
+function renderList() {
+    let liste = document.getElementById("liste");
     liste.innerHTML = "";
 
-    let sortiert = daten.slice().sort((a,b) => new Date(b.datum) - new Date(a.datum));
+    daten.sort((a, b) => b.id - a.id);
 
-    sortiert.forEach(e => {
+    daten.forEach(d => {
         let div = document.createElement("div");
         div.className = "entry";
+
         div.innerHTML =
-            "<strong>" + e.datum + "</strong><br>" +
-            e.produkt + " | Umsatz: " + e.umsatz + "€ | Provision: " + e.provBetrag.toFixed(2) + "€";
+            "<b>" + d.datum + "</b><br>" +
+            d.produkt + " | " + d.umsatz + "€ → " + d.prov.toFixed(2) + "€<br>" +
+            "<button class='small-btn' onclick='edit(" + d.id + ")'>✏️</button> " +
+            "<button class='small-btn' onclick='del(" + d.id + ")'>❌</button>";
+
         liste.appendChild(div);
     });
 }
 
+function del(id) {
+    daten = daten.filter(d => d.id !== id);
+    save();
+    update();
+}
+
+function edit(id) {
+    let d = daten.find(x => x.id === id);
+
+    produktEl.value = d.produkt;
+    umsatzEl.value = d.umsatz;
+    provisionEl.value = d.provision;
+    datumEl.value = d.datum;
+
+    del(id);
+}
+
 function drawChart() {
-    let labels = daten.map(e => e.datum);
-    let values = daten.map(e => e.provBetrag);
+    let labels = daten.map(d => d.datum);
+    let values = daten.map(d => d.prov);
 
     if (chart) chart.destroy();
 
     chart = new Chart(document.getElementById("chart"), {
-        type: 'line',
+        type: "bar",
         data: {
             labels: labels,
             datasets: [{
-                label: 'Provision',
-                data: values,
-                fill: true
+                label: "Provision",
+                data: values
             }]
         }
     });
 }
 
-updateUI();
+function exportCSV() {
+    let csv = "Datum,Produkt,Umsatz,Provision\n";
+
+    daten.forEach(d => {
+        csv += d.datum + "," + d.produkt + "," + d.umsatz + "," + d.prov.toFixed(2) + "\n";
+    });
+
+    let blob = new Blob([csv], { type: "text/csv" });
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "provision.csv";
+    a.click();
+}
+
+update();
 </script>
 
 </body>
