@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punkte Tracker</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+button, input {
+  margin: 5px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+}
+
+.section {
+  margin-top: 25px;
+}
+
+canvas {
+  max-width: 400px;
+  margin: auto;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📊 Punkte Tracker</h2>
+
+<input type="month" id="monthPicker">
+
+<div id="buttons"></div>
+
+<div class="section">
+  <h3 id="todayTotal"></h3>
+</div>
+
+<div class="section">
+  <h3>📅 Monat gesamt:</h3>
+  <div id="monthTotal"></div>
+</div>
+
+<div class="section">
+  <h3>📊 Kategorien</h3>
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="section">
+  <button onclick="exportData()">📄 Export</button>
+</div>
+
+<script>
+const tasks = [
+  ["Service Wasser", 1.25, "Service"],
+  ["Service Kaffee", 1.25, "Service"],
+  ["Service Snack", 1.5, "Service"],
+  ["Wartung Wasser", 1, "Wartung"],
+  ["Wartung Snack", 0.75, "Wartung"],
+  ["Wartung Kaffee", 1, "Wartung"],
+  ["Installation Wasser", 2, "Installation"],
+  ["Installation Snack", 2, "Installation"],
+  ["Installation Kaffee", 2, "Installation"],
+  ["BVO", 1.25, "Sonstiges"],
+  ["Nachrüstung", 1.25, "Sonstiges"]
+];
+
+const monthPicker = document.getElementById("monthPicker");
+monthPicker.value = new Date().toISOString().slice(0,7);
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function loadData() {
+  return JSON.parse(localStorage.getItem("points") || "{}");
+}
+
+function saveData(data) {
+  localStorage.setItem("points", JSON.stringify(data));
+}
+
+function addTask(name, value, category) {
+  let data = loadData();
+  let today = getTodayKey();
+
+  if (!data[today]) data[today] = [];
+
+  data[today].push({name, value, category});
+  saveData(data);
+
+  render();
+}
+
+function render() {
+  const data = loadData();
+  const today = getTodayKey();
+  const selectedMonth = monthPicker.value;
+
+  let todaySum = 0;
+  let monthSum = 0;
+
+  let categories = {
+    Service: 0,
+    Wartung: 0,
+    Installation: 0,
+    Sonstiges: 0
+  };
+
+  Object.keys(data).forEach(date => {
+    data[date].forEach(t => {
+      if (date === today) todaySum += t.value;
+
+      if (date.startsWith(selectedMonth)) {
+        monthSum += t.value;
+        categories[t.category] += t.value;
+      }
+    });
+  });
+
+  document.getElementById("todayTotal").innerHTML =
+    "Heute: " + todaySum.toFixed(2) + " Punkte";
+
+  document.getElementById("monthTotal").innerHTML =
+    monthSum.toFixed(2) + " Punkte";
+
+  drawChart(categories);
+}
+
+let chart;
+
+function drawChart(categories) {
+  const ctx = document.getElementById("chart");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: Object.keys(categories),
+      datasets: [{
+        data: Object.values(categories)
+      }]
+    }
+  });
+}
+
+function exportData() {
+  const data = loadData();
+  const selectedMonth = monthPicker.value;
+
+  let csv = "Datum,Tätigkeit,Punkte,Kategorie\n";
+
+  Object.keys(data).forEach(date => {
+    if (date.startsWith(selectedMonth)) {
+      data[date].forEach(t => {
+        csv += date + "," + t.name + "," + t.value + "," + t.category + "\n";
+      });
+    }
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "punkte.csv";
+  a.click();
+}
+
+// Buttons erstellen
+const btnDiv = document.getElementById("buttons");
+tasks.forEach(t => {
+  const btn = document.createElement("button");
+  btn.innerText = t[0] + " (" + t[1] + ")";
+  btn.onclick = () => addTask(t[0], t[1], t[2]);
+  btnDiv.appendChild(btn);
+});
+
+monthPicker.addEventListener("change", render);
+
+render();
+</script>
+
+</body>
+</html>
