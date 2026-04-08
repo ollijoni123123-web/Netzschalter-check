@@ -32,9 +32,9 @@ button {
 }
 .small { width:auto; padding:5px; }
 
-.kaffee { color:#6f4e37; font-weight:bold; }
-.snack { color:silver; font-weight:bold; }
-.wasser { color:#4da6ff; font-weight:bold; }
+.kaffee { color:#6f4e37; }
+.snack { color:silver; }
+.wasser { color:#4da6ff; }
 
 canvas {
     width:100% !important;
@@ -74,8 +74,13 @@ canvas {
 </div>
 
 <div class="card">
-<h3>📦 Kategorien</h3>
+<h3>📦 Kategorien (Provision)</h3>
 <p id="stats"></p>
+</div>
+
+<div class="card">
+<h3>📊 Geräte verkauft</h3>
+<p id="anzahl"></p>
 </div>
 
 <div class="card">
@@ -132,9 +137,8 @@ function update() {
     let sum = 0;
     let last = 0;
 
-    let kaffe = 0;
-    let snack = 0;
-    let wasser = 0;
+    let kaffe = 0, snack = 0, wasser = 0;
+    let countK = 0, countS = 0, countW = 0;
 
     data.forEach(e => {
         let k = monthKey(e.datum);
@@ -142,9 +146,18 @@ function update() {
         if (k === current) sum += e.prov;
         if (k === lastKey) last += e.prov;
 
-        if (e.produkt === "Kaffee") kaffe += e.prov;
-        if (e.produkt === "Snack") snack += e.prov;
-        if (e.produkt === "Wasser") wasser += e.prov;
+        if (e.produkt === "Kaffee") {
+            kaffe += e.prov;
+            countK++;
+        }
+        if (e.produkt === "Snack") {
+            snack += e.prov;
+            countS++;
+        }
+        if (e.produkt === "Wasser") {
+            wasser += e.prov;
+            countW++;
+        }
     });
 
     monat.innerText = "Aktuell: " + sum.toFixed(2) + " €";
@@ -154,6 +167,11 @@ function update() {
         "<span class='kaffee'>☕ Kaffee:</span> " + kaffe.toFixed(2) + " €<br>" +
         "<span class='snack'>🍫 Snack:</span> " + snack.toFixed(2) + " €<br>" +
         "<span class='wasser'>💧 Wasser:</span> " + wasser.toFixed(2) + " €";
+
+    anzahl.innerHTML =
+        "<span class='kaffee'>☕ Kaffee:</span> " + countK + " Stück<br>" +
+        "<span class='snack'>🍫 Snack:</span> " + countS + " Stück<br>" +
+        "<span class='wasser'>💧 Wasser:</span> " + countW + " Stück";
 
     render();
     draw(kaffe, snack, wasser);
@@ -171,14 +189,20 @@ function render() {
             "<b>" + e.datum + "</b> | " +
             e.produkt + " | " +
             e.umsatz + "€ → " +
-            e.prov.toFixed(2) + "€";
+            e.prov.toFixed(2) + "€<br>" +
+            "<button class='small' onclick='del(" + e.id + ")'>❌ Löschen</button>";
 
         liste.appendChild(div);
     });
 }
 
-function draw(kaffe, snack, wasser) {
+function del(id) {
+    data = data.filter(e => e.id !== id);
+    save();
+    update();
+}
 
+function draw(kaffe, snack, wasser) {
     if (chart) chart.destroy();
 
     chart = new Chart(document.getElementById("chart"), {
@@ -191,14 +215,12 @@ function draw(kaffe, snack, wasser) {
                     "#6f4e37",
                     "silver",
                     "#4da6ff"
-                ],
-                borderWidth: 3
+                ]
             }]
         },
         options: {
             plugins: {
                 legend: {
-                    position: "top",
                     labels: { color: "white" }
                 }
             },
