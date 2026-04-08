@@ -69,7 +69,6 @@ canvas {
   margin: auto;
 }
 
-/* 🔥 AKTIONS BUTTONS */
 .export { background: #2563eb; }
 .pdf { background: #7c3aed; }
 .save { background: #16a34a; }
@@ -303,14 +302,22 @@ function createPDF(){
   win.print();
 }
 
+/* 🔐 RESET MIT PASSWORT */
 function clearAll(){
-  if(confirm("Alles löschen?")){
-    localStorage.removeItem("points");
-    render();
+  const pw = prompt("Passwort eingeben:");
+
+  if(pw === "2015"){
+    if(confirm("Wirklich ALLES löschen?")){
+      localStorage.removeItem("points");
+      alert("Daten gelöscht");
+      render();
+    }
+  } else {
+    alert("Falsches Passwort!");
   }
 }
 
-/* 🔥 BUTTONS IN FESTEN 3ER REIHEN */
+/* 🔥 BUTTONS */
 const btnDiv = document.getElementById("buttons");
 
 function createRow(groupName) {
@@ -336,7 +343,6 @@ createRow("Service");
 createRow("Wartung");
 createRow("Installation");
 
-// Rest
 tasks.forEach(t => {
   if (
     !t[0].includes("Service") &&
