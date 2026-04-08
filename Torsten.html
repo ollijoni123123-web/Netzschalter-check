@@ -21,6 +21,15 @@ body {
 
 h1 { text-align: center; }
 
+.status {
+  text-align: center;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.listening { color: red; }
+.done-status { color: green; }
+
 input, select {
   width: 100%;
   padding: 8px;
@@ -79,7 +88,7 @@ li {
   background: #ffe5e5;
 }
 
-/* 🔥 MODAL */
+/* Modal */
 .modal {
   position: fixed;
   top: 0;
@@ -106,6 +115,8 @@ li {
 
 <div class="container">
   <h1>🎤 To-Do Pro+</h1>
+
+  <div id="status" class="status">Bereit</div>
 
   <button class="mic" onclick="startRecognition()">🎙️ Sprechen</button>
 
@@ -135,7 +146,7 @@ li {
   <ul id="doneList"></ul>
 </div>
 
-<!-- 🔥 MODAL -->
+<!-- Modal -->
 <div class="modal" id="editModal">
   <div class="modal-content">
     <h3>✏️ Aufgabe bearbeiten</h3>
@@ -165,6 +176,16 @@ li {
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 let currentEditIndex = null;
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function setStatus(text, className="") {
+  const s = document.getElementById("status");
+  s.textContent = text;
+  s.className = "status " + className;
+}
 
 function save() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
@@ -308,6 +329,7 @@ function saveEdit() {
   closeModal();
 }
 
+// 🎤 Sprachaufnahme mit MULTI-TASK
 function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -318,9 +340,31 @@ function startRecognition() {
 
   const rec = new SpeechRecognition();
   rec.lang = "de-DE";
+
   rec.start();
 
-  rec.onresult = e => addTask(e.results[0][0].transcript);
+  rec.onstart = () => {
+    setStatus("🎤 Aufnahme läuft...", "listening");
+    vibrate([100,50,100]);
+  };
+
+  rec.onresult = e => {
+    const text = e.results[0][0].transcript;
+
+    const parts = text
+      .toLowerCase()
+      .split(/ und |,| dann /)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    parts.forEach(part => addTask(part));
+  };
+
+  rec.onend = () => {
+    setStatus("✅ Aufnahme beendet", "done-status");
+    vibrate([200]);
+    setTimeout(() => setStatus("Bereit"), 2000);
+  };
 }
 
 // Reminder
