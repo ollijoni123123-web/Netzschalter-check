@@ -3,39 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Provisionsrechner</title>
+<title>Provisionsrechner PRO</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #e3f2fd;
-}
-h1 {
-    text-align: center;
-    padding: 15px;
-}
-.container { padding: 10px; }
+body { font-family: Arial; margin:0; background:#e3f2fd; }
+h1 { text-align:center; padding:15px; }
+.container { padding:10px; }
 .card {
-    background: white;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 10px;
+    background:white;
+    padding:15px;
+    margin-bottom:10px;
+    border-radius:10px;
 }
 input, select, button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
+    width:100%;
+    padding:10px;
+    margin-top:8px;
 }
 button {
-    background: #2196f3;
-    color: white;
-    border: none;
+    background:#2196f3;
+    color:white;
+    border:none;
 }
 .entry {
-    border-bottom: 1px solid #ddd;
-    padding: 8px;
+    border-bottom:1px solid #ddd;
+    padding:8px;
+}
+.small { width:auto; padding:5px; }
+.success { color:green; }
+.error { color:red; }
+
+/* Farben */
+.kaffee { color:#6f4e37; font-weight:bold; }
+.snack { color:silver; font-weight:bold; }
+.wasser { color:#2196f3; font-weight:bold; }
+
+canvas {
+    width:100% !important;
+    height:250px !important;
 }
 </style>
 </head>
@@ -47,11 +53,11 @@ button {
 <div class="container">
 
 <div class="card">
-<h3>Eintrag</h3>
+<h3>➕ Eintrag</h3>
 <select id="produkt">
-<option>Kaffee</option>
-<option>Snack</option>
-<option>Wasser</option>
+<option value="Kaffee">☕ Kaffee</option>
+<option value="Snack">🍫 Snack</option>
+<option value="Wasser">💧 Wasser</option>
 </select>
 
 <input type="number" id="umsatz" placeholder="Umsatz €">
@@ -62,13 +68,18 @@ button {
 </div>
 
 <div class="card">
-<h3>Monat</h3>
+<h3>📅 Monatsübersicht</h3>
 <p id="monat"></p>
 <p id="letzter"></p>
 </div>
 
 <div class="card">
-<h3>Abgleich</h3>
+<h3>📦 Produkt-Statistik</h3>
+<p id="stats"></p>
+</div>
+
+<div class="card">
+<h3>✅ Abgleich</h3>
 <select id="monatSelect"></select>
 <input type="number" id="ist" placeholder="Ist Provision">
 <button onclick="check()">Prüfen</button>
@@ -76,13 +87,18 @@ button {
 </div>
 
 <div class="card">
-<h3>Liste</h3>
+<h3>📈 Diagramm</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+<h3>🗓 Einträge</h3>
 <div id="liste"></div>
 </div>
 
 <div class="card">
-<h3>Diagramm</h3>
-<canvas id="chart"></canvas>
+<h3>📥 Export</h3>
+<button onclick="exportCSV()">CSV Export</button>
 </div>
 
 </div>
@@ -91,75 +107,95 @@ button {
 let data = JSON.parse(localStorage.getItem("provData")) || [];
 let chart;
 
+function getColor(p){
+    if(p==="Kaffee") return "#6f4e37";
+    if(p==="Snack") return "silver";
+    if(p==="Wasser") return "#2196f3";
+}
+
+function getClass(p){
+    if(p==="Kaffee") return "kaffee";
+    if(p==="Snack") return "snack";
+    if(p==="Wasser") return "wasser";
+}
+
 function save() {
     localStorage.setItem("provData", JSON.stringify(data));
 }
 
 function addEntry() {
-    let p = produkt.value;
     let u = parseFloat(umsatz.value);
     let pr = parseFloat(provision.value);
     let d = datum.value;
+    let p = produkt.value;
 
-    if (!u || !pr || !d) {
-        alert("Bitte alles ausfüllen");
-        return;
-    }
+    if (!u || !pr || !d) return alert("Bitte alles ausfüllen");
 
     data.push({
         id: Date.now(),
         produkt: p,
         umsatz: u,
-        prov: u * pr / 100,
-        datum: d
+        provision: pr,
+        datum: d,
+        prov: u * pr / 100
     });
 
     save();
     update();
 }
 
-function monthKey(d) {
-    let dt = new Date(d);
+function monthKey(date) {
+    let dt = new Date(date);
     return dt.getFullYear() + "-" + dt.getMonth();
 }
 
 function update() {
     let now = new Date();
     let current = monthKey(now);
-
-    let lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    let lastKey = monthKey(lastDate);
+    let lastKey = monthKey(new Date(now.getFullYear(), now.getMonth()-1, 1));
 
     let sum = 0;
     let last = 0;
 
+    let stats = { Kaffee:0, Snack:0, Wasser:0 };
+
     data.forEach(e => {
         let k = monthKey(e.datum);
+
         if (k === current) sum += e.prov;
         if (k === lastKey) last += e.prov;
+
+        stats[e.produkt] += e.prov;
     });
 
     monat.innerText = "Dieser Monat: " + sum.toFixed(2) + " €";
     letzter.innerText = "Letzter Monat: " + last.toFixed(2) + " €";
+
+    statsEl.innerHTML =
+        "<span class='kaffee'>☕ Kaffee:</span> " + stats.Kaffee.toFixed(2) + " €<br>" +
+        "<span class='snack'>🍫 Snack:</span> " + stats.Snack.toFixed(2) + " €<br>" +
+        "<span class='wasser'>💧 Wasser:</span> " + stats.Wasser.toFixed(2) + " €";
 
     fillSelect();
     render();
     draw();
 }
 
-function fillSelect() {
-    monatSelect.innerHTML = "";
-    let map = {};
+const statsEl = document.getElementById("stats");
 
-    data.forEach(e => {
+function fillSelect() {
+    monatSelect.innerHTML="";
+    let map={};
+
+    data.forEach(e=>{
         map[monthKey(e.datum)] = e.datum;
     });
 
-    for (let key in map) {
-        let d = new Date(map[key]);
-        let opt = document.createElement("option");
-        opt.value = key;
-        opt.text = d.toLocaleString("de-DE", {month:"long", year:"numeric"});
+    for(let k in map){
+        let d = new Date(map[k]);
+        let opt=document.createElement("option");
+        opt.value=k;
+        opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
         monatSelect.appendChild(opt);
     }
 }
@@ -171,51 +207,91 @@ function check() {
     let soll = 0;
 
     data.forEach(e => {
-        if (monthKey(e.datum) === key) soll += e.prov;
+        if (monthKey(e.datum) === key) {
+            soll += e.prov;
+        }
     });
 
     let diff = istVal - soll;
 
-    result.innerText = Math.abs(diff) < 0.01
-        ? "✅ OK"
-        : "❌ " + diff.toFixed(2) + " €";
+    if (Math.abs(diff) < 0.01) {
+        result.innerText = "✅ Passt genau!";
+        result.className = "success";
+    } else {
+        result.innerText = "❌ Abweichung: " + diff.toFixed(2) + " €";
+        result.className = "error";
+    }
 }
 
 function render() {
-    liste.innerHTML = "";
-
+    liste.innerHTML="";
     data.sort((a,b)=>b.id-a.id);
 
     data.forEach(e => {
         let div = document.createElement("div");
-        div.className = "entry";
+        div.className = "entry " + getClass(e.produkt);
 
         div.innerHTML =
-            e.datum + " | " +
+            "<b>" + e.datum + "</b> | " +
             e.produkt + " | " +
             e.umsatz + "€ → " +
-            e.prov.toFixed(2) + "€";
+            e.prov.toFixed(2) + "€<br>" +
+            "<button class='small' onclick='edit(" + e.id + ")'>✏️</button> " +
+            "<button class='small' onclick='del(" + e.id + ")'>❌</button>";
 
         liste.appendChild(div);
     });
 }
 
+function del(id) {
+    data = data.filter(e => e.id !== id);
+    save();
+    update();
+}
+
+function edit(id) {
+    let e = data.find(x => x.id === id);
+
+    produkt.value = e.produkt;
+    umsatz.value = e.umsatz;
+    provision.value = e.provision;
+    datum.value = e.datum;
+
+    del(id);
+}
+
 function draw() {
     let labels = data.map(e => e.datum);
     let values = data.map(e => e.prov);
+    let colors = data.map(e => getColor(e.produkt));
 
     if (chart) chart.destroy();
 
     chart = new Chart(chartEl, {
-        type: "line",
+        type: "bar",
         data: {
             labels: labels,
             datasets: [{
                 label: "Provision",
-                data: values
+                data: values,
+                backgroundColor: colors
             }]
         }
     });
+}
+
+function exportCSV() {
+    let csv = "Datum,Produkt,Umsatz,Provision\n";
+
+    data.forEach(e => {
+        csv += e.datum + "," + e.produkt + "," + e.umsatz + "," + e.prov.toFixed(2) + "\n";
+    });
+
+    let blob = new Blob([csv], { type: "text/csv" });
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "provision.csv";
+    a.click();
 }
 
 let chartEl = document.getElementById("chart");
