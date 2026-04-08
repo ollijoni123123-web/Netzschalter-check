@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scanner PRO+</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  padding: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 15px;
+  font-size: 18px;
+  border-radius: 12px;
+  border: none;
+  margin-top: 10px;
+  background: #1e293b;
+  color: white;
+}
+
+button {
+  margin-top: 10px;
+  padding: 12px;
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 16px;
+}
+
+#result {
+  margin-top: 15px;
+  font-size: 24px;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: bold;
+}
+
+.ok { background: #064e3b; color: #34d399; }
+.bad { background: #7f1d1d; color: #f87171; }
+.warn { background: #78350f; color: #fbbf24; }
+
+video {
+  width: 100%;
+  margin-top: 15px;
+  border-radius: 12px;
+}
+
+.scan-box {
+  position: relative;
+}
+
+.scan-area {
+  position: absolute;
+  top: 30%;
+  left: 10%;
+  width: 80%;
+  height: 20%;
+  border: 3px solid #22c55e;
+  border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📷 Scanner PRO+</h2>
+
+<input id="serialInput" placeholder="Seriennummer eingeben">
+
+<button onclick="manualCheck()">🔍 Manuell prüfen</button>
+<button onclick="sendEmail()">📧 Tausch melden</button>
+<button onclick="toggleTorch()">🔦 Taschenlampe</button>
+
+<div id="result"></div>
+
+<div class="scan-box">
+  <video id="video" autoplay playsinline></video>
+  <div class="scan-area"></div>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<button onclick="resetScan()">🔄 Neuer Scan</button>
+
+</div>
+
+<script>
+
+// 🔊 Ton
+function beep() {
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play();
+}
+
+// 📳 Vibration
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate(200);
+}
+
+// 🔦 Taschenlampe
+let streamTrack;
+let torchOn = false;
+
+function toggleTorch() {
+  if (!streamTrack) return;
+
+  torchOn = !torchOn;
+
+  streamTrack.applyConstraints({
+    advanced: [{ torch: torchOn }]
+  }).catch(() => alert("Taschenlampe nicht unterstützt"));
+}
+
+// 🔥 INPUT NORMALISIERUNG
+function normalizeInput(input) {
+  return input.toUpperCase()
+    .replace(/O/g, "0")
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function extractSerial(text) {
+  const cleaned = normalizeInput(text);
+  const match = cleaned.match(/(CP\d{2})(\d{8})(\d{3})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
+}
+
+function parseSerial(serial) {
+  const p = serial.split("-");
+  return {
+    model: p[0],
+    date: parseInt(p[1]),
+    num: parseInt(p[2])
+  };
+}
+
+function inRange(s, start, end) {
+  if (s.model !== start.model) return false;
+
+  const v = s.date * 1000 + s.num;
+  const sv = start.date * 1000 + start.num;
+  const ev = end.date * 1000 + end.num;
+
+  return v >= sv && v <= ev;
+}
+
+const ranges = [
+  ["CP20-20231216-001", "CP20-20240428-108"],
+  ["CP30-20240128-001", "CP30-20240430-048"],
+  ["CP60-20240127-001", "CP60-20240529-018"]
+];
+
+// 🔍 Prüfung
+function checkSerial(serial) {
+  const r = document.getElementById("result");
+
+  const s = parseSerial(serial);
+
+  const hit = ranges.some(range =>
+    inRange(s, parseSerial(range[0]), parseSerial(range[1]))
+  );
+
+  if (hit) {
+    r.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
+    r.className = "bad";
+  } else {
+    r.innerHTML = "✅ OK";
+    r.className = "ok";
+  }
+
+  beep();
+  vibrate();
+}
+
+// 🔧 Manuell
+function manualCheck() {
+  scanning = false;
+
+  const raw = document.getElementById("serialInput").value;
+  const serial = extractSerial(raw);
+
+  if (!serial) {
+    const r = document.getElementById("result");
+    r.innerHTML = "❌ Ungültig";
+    r.className = "warn";
+    return;
+  }
+
+  document.getElementById("serialInput").value = serial;
+  checkSerial(serial);
+}
+
+// ⌨️ Enter Support
+document.getElementById("serialInput")
+  .addEventListener("keypress", function(e) {
+    if (e.key === "Enter") manualCheck();
+  });
+
+// 📧 EMAIL
+function sendEmail() {
+  const serial = document.getElementById("serialInput").value;
+
+  if (!serial) {
+    alert("Bitte zuerst Seriennummer prüfen!");
+    return;
+  }
+
+  const subject = encodeURIComponent("Netzschalter getauscht");
+  const body = encodeURIComponent(
+    `Ich habe an folgender Seriennummer ${serial} den Netzschalter getauscht.`
+  );
+
+  window.location.href =
+    `mailto:tech.support@coffee-perfect.de?subject=${subject}&body=${body}`;
+}
+
+// 🎥 Kamera
+let scanning = true;
+
+async function startCamera() {
+  const video = document.getElementById("video");
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
+  });
+
+  streamTrack = stream.getVideoTracks()[0];
+  video.srcObject = stream;
+
+  requestAnimationFrame(scanLoop);
+}
+
+// 🔍 OCR Loop
+async function scanLoop() {
+  if (!scanning) return;
+
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const sx = canvas.width * 0.1;
+  const sy = canvas.height * 0.3;
+  const sw = canvas.width * 0.8;
+  const sh = canvas.height * 0.2;
+
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  const result = await Tesseract.recognize(canvas, 'eng');
+  const serial = extractSerial(result.data.text);
+
+  if (serial) {
+    document.getElementById("serialInput").value = serial;
+    checkSerial(serial);
+    scanning = false;
+    return;
+  }
+
+  requestAnimationFrame(scanLoop);
+}
+
+// 🔄 Reset
+function resetScan() {
+  scanning = true;
+  document.getElementById("result").innerHTML = "";
+  requestAnimationFrame(scanLoop);
+}
+
+// Start
+startCamera();
+
+</script>
+
+</body>
+</html>
