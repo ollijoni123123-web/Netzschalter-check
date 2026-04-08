@@ -1,9 +1,11 @@
+}
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Provisionsrechner PRO</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -56,7 +58,6 @@ canvas{width:100%!important;height:260px!important;}
 <div class="card">
 <h3>📊 Monatsübersicht</h3>
 <p id="monat"></p>
-<p id="trend"></p>
 </div>
 
 <div class="card">
@@ -86,6 +87,16 @@ canvas{width:100%!important;height:260px!important;}
 </div>
 
 <div class="card">
+<h3>🍩 Diagramm</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+<h3>📊 Vergleich</h3>
+<canvas id="vergleichChart"></canvas>
+</div>
+
+<div class="card">
 <h3>🗓 Einträge</h3>
 <div id="liste"></div>
 </div>
@@ -94,152 +105,161 @@ canvas{width:100%!important;height:260px!important;}
 
 <script>
 let data = JSON.parse(localStorage.getItem("provData")) || [];
+let chart, vergleichChart;
 
-// Datum automatisch
-document.getElementById("datum").valueAsDate = new Date();
+datum.valueAsDate=new Date();
 
 function save(){
-    localStorage.setItem("provData", JSON.stringify(data));
+localStorage.setItem("provData", JSON.stringify(data));
 }
 
 function addEntry(){
-    let u = parseFloat(document.getElementById("umsatz").value);
-    let pr = parseFloat(document.getElementById("provision").value);
-    let d = document.getElementById("datum").value;
-    let p = document.getElementById("produkt").value;
+let u=parseFloat(umsatz.value);
+let pr=parseFloat(provision.value);
+let d=datum.value;
+let p=produkt.value;
 
-    if(isNaN(u)||isNaN(pr)||!d){
-        alert("Bitte alles ausfüllen");
-        return;
-    }
+if(isNaN(u)||isNaN(pr)||!d){alert("Bitte alles ausfüllen");return;}
 
-    data.push({
-        id: Date.now(),
-        produkt:p,
-        umsatz:u,
-        datum:d,
-        prov:u*pr/100
-    });
+data.push({id:Date.now(),produkt:p,umsatz:u,datum:d,prov:u*pr/100});
 
-    save();
-    fillMonate();
-    update();
-
-    document.getElementById("umsatz").value="";
-    document.getElementById("provision").value="";
+save();fillMonate();update();
+umsatz.value="";provision.value="";
 }
 
 function monthKey(date){
-    let dt = new Date(date);
-    return dt.getFullYear()+"-"+dt.getMonth();
+let dt=new Date(date);
+return dt.getFullYear()+"-"+dt.getMonth();
 }
 
 function fillMonate(){
-    let select=document.getElementById("monatFilter");
-    select.innerHTML="";
+monatFilter.innerHTML="";
+let map={};
+data.forEach(e=>map[monthKey(e.datum)]=e.datum);
 
-    let map={};
-    data.forEach(e=>map[monthKey(e.datum)]=e.datum);
+Object.keys(map).sort().reverse().forEach(k=>{
+let d=new Date(map[k]);
+let opt=document.createElement("option");
+opt.value=k;
+opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
+monatFilter.appendChild(opt);
+});
+}
 
-    Object.keys(map).sort().reverse().forEach(k=>{
-        let d=new Date(map[k]);
-        let opt=document.createElement("option");
-        opt.value=k;
-        opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
-        select.appendChild(opt);
-    });
+function getLastMonth(key){
+let[y,m]=key.split("-").map(Number);
+let d=new Date(y,m-1,1);
+return d.getFullYear()+"-"+d.getMonth();
 }
 
 function update(){
-    let selected=document.getElementById("monatFilter").value;
+let selected=monatFilter.value;
 
-    let sum=0,umsatzSum=0;
-    let kaffe=0,snack=0,wasser=0;
-    let countK=0,countS=0,countW=0;
+let sum=0,last=0,umsatzSum=0;
+let kaffe=0,snack=0,wasser=0;
+let countK=0,countS=0,countW=0;
 
-    data.forEach(e=>{
-        if(monthKey(e.datum)===selected){
-            sum+=e.prov;
-            umsatzSum+=e.umsatz;
+let lastKey=getLastMonth(selected);
 
-            if(e.produkt==="Kaffee"){kaffe+=e.prov;countK++;}
-            if(e.produkt==="Snack"){snack+=e.prov;countS++;}
-            if(e.produkt==="Wasser"){wasser+=e.prov;countW++;}
-        }
-    });
+data.forEach(e=>{
+let k=monthKey(e.datum);
 
-    document.getElementById("monat").innerText="Provision: "+sum.toFixed(2)+" €";
+if(k===selected){
+sum+=e.prov;
+umsatzSum+=e.umsatz;
 
-    let zielVal=parseFloat(document.getElementById("ziel").value)||0;
-    let typ=document.getElementById("zielTyp").value;
+if(e.produkt==="Kaffee"){kaffe+=e.prov;countK++;}
+if(e.produkt==="Snack"){snack+=e.prov;countS++;}
+if(e.produkt==="Wasser"){wasser+=e.prov;countW++;}
+}
 
-    let currentValue = typ==="umsatz" ? umsatzSum : sum;
+if(k===lastKey) last+=e.prov;
+});
 
-    let percent=0;
-    if(zielVal>0){
-        percent=(currentValue/zielVal)*100;
-    }
+monat.innerText="Provision: "+sum.toFixed(2)+" €";
 
-    let bar=document.getElementById("progressBar");
+let zielVal=parseFloat(ziel.value)||0;
+let typ=zielTyp.value;
+let currentValue = typ==="umsatz" ? umsatzSum : sum;
 
-    // Farben setzen
-    bar.className="progress-bar";
+let percent=0;
+if(zielVal>0){
+percent=(currentValue/zielVal)*100;
+}
 
-    if(percent>=100){
-        bar.classList.add("green");
-    }else if(percent>=50){
-        bar.classList.add("yellow");
-    }else{
-        bar.classList.add("red");
-    }
+let bar=progressBar;
+bar.className="progress-bar";
 
-    if(currentValue>zielVal && zielVal>0){
-        bar.classList.remove("green");
-        bar.classList.add("purple");
-    }
+// 👉 FIXED LOGIK
+if(percent > 110){
+bar.classList.add("purple");
+}else if(percent >= 100){
+bar.classList.add("green");
+}else if(percent >= 50){
+bar.classList.add("yellow");
+}else{
+bar.classList.add("red");
+}
 
-    percent=Math.min(percent,100);
+percent=Math.min(percent,100);
+bar.style.width=percent+"%";
+bar.innerText=percent.toFixed(0)+"%";
 
-    bar.style.width=percent+"%";
-    bar.innerText=percent.toFixed(0)+"%";
+stats.innerHTML=
+"Kaffee: "+kaffe.toFixed(2)+" €<br>"+
+"Snack: "+snack.toFixed(2)+" €<br>"+
+"Wasser: "+wasser.toFixed(2)+" €";
 
-    document.getElementById("stats").innerHTML=
-        "Kaffee: "+kaffe.toFixed(2)+" €<br>"+
-        "Snack: "+snack.toFixed(2)+" €<br>"+
-        "Wasser: "+wasser.toFixed(2)+" €";
+anzahl.innerHTML=
+"Kaffee: "+countK+" Stück<br>"+
+"Snack: "+countS+" Stück<br>"+
+"Wasser: "+countW+" Stück";
 
-    document.getElementById("anzahl").innerHTML=
-        "Kaffee: "+countK+" Stück<br>"+
-        "Snack: "+countS+" Stück<br>"+
-        "Wasser: "+countW+" Stück";
-
-    render(selected);
+render(selected);
+draw(kaffe,snack,wasser);
+drawVergleich(sum,last);
 }
 
 function render(selected){
-    let liste=document.getElementById("liste");
-    liste.innerHTML="";
+liste.innerHTML="";
+data.forEach(e=>{
+if(monthKey(e.datum)!==selected)return;
 
-    data.forEach(e=>{
-        if(monthKey(e.datum)!==selected)return;
-
-        let div=document.createElement("div");
-        div.className="entry";
-        div.innerHTML="<b>"+e.datum+"</b> | "+e.produkt+" | "+e.umsatz+"€ → "+e.prov.toFixed(2)+"€<br>"+
-        "<button onclick='del("+e.id+")'>❌ Löschen</button>";
-
-        liste.appendChild(div);
-    });
+let div=document.createElement("div");
+div.className="entry";
+div.innerHTML="<b>"+e.datum+"</b> | "+e.produkt+" | "+e.umsatz+"€ → "+e.prov.toFixed(2)+"€<br>"+
+"<button onclick='del("+e.id+")'>❌ Löschen</button>";
+liste.appendChild(div);
+});
 }
 
 function del(id){
-    data=data.filter(e=>e.id!==id);
-    save();fillMonate();update();
+data=data.filter(e=>e.id!==id);
+save();fillMonate();update();
 }
+
+function draw(k,s,w){
+if(chart)chart.destroy();
+chart=new Chart(chartEl,{
+type:"doughnut",
+data:{labels:["Kaffee","Snack","Wasser"],datasets:[{data:[k,s,w],backgroundColor:["#6f4e37","silver","#4da6ff"]}]}
+});
+}
+
+function drawVergleich(c,l){
+if(vergleichChart)vergleichChart.destroy();
+vergleichChart=new Chart(vergleichChartEl,{
+type:"bar",
+data:{labels:["Vormonat","Aktuell"],datasets:[{data:[l,c]}]}
+});
+}
+
+let chartEl=document.getElementById("chart");
+let vergleichChartEl=document.getElementById("vergleichChart");
 
 fillMonate();
 update();
 </script>
 
 </body>
-</html>
+</html
