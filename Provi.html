@@ -68,6 +68,11 @@ canvas {
 </div>
 
 <div class="card">
+<h3>📅 Monat auswählen</h3>
+<select id="monatFilter" onchange="update()"></select>
+</div>
+
+<div class="card">
 <h3>📅 Monatsübersicht</h3>
 <p id="monat"></p>
 <p id="letzter"></p>
@@ -121,6 +126,7 @@ function addEntry() {
     });
 
     save();
+    fillMonate();
     update();
 }
 
@@ -129,39 +135,48 @@ function monthKey(date) {
     return dt.getFullYear() + "-" + dt.getMonth();
 }
 
+function fillMonate() {
+    let select = document.getElementById("monatFilter");
+    select.innerHTML = "";
+
+    let map = {};
+
+    data.forEach(e => {
+        map[monthKey(e.datum)] = e.datum;
+    });
+
+    Object.keys(map).sort().reverse().forEach(k => {
+        let d = new Date(map[k]);
+        let opt = document.createElement("option");
+        opt.value = k;
+        opt.text = d.toLocaleString("de-DE", {month:"long", year:"numeric"});
+        select.appendChild(opt);
+    });
+}
+
 function update() {
-    let now = new Date();
-    let current = monthKey(now);
-    let lastKey = monthKey(new Date(now.getFullYear(), now.getMonth()-1, 1));
+    let selected = document.getElementById("monatFilter").value;
+
+    if (!selected && data.length > 0) {
+        selected = monthKey(data[data.length-1].datum);
+    }
 
     let sum = 0;
-    let last = 0;
-
     let kaffe = 0, snack = 0, wasser = 0;
     let countK = 0, countS = 0, countW = 0;
 
     data.forEach(e => {
-        let k = monthKey(e.datum);
+        if (monthKey(e.datum) === selected) {
+            sum += e.prov;
 
-        if (k === current) sum += e.prov;
-        if (k === lastKey) last += e.prov;
-
-        if (e.produkt === "Kaffee") {
-            kaffe += e.prov;
-            countK++;
-        }
-        if (e.produkt === "Snack") {
-            snack += e.prov;
-            countS++;
-        }
-        if (e.produkt === "Wasser") {
-            wasser += e.prov;
-            countW++;
+            if (e.produkt === "Kaffee") { kaffe += e.prov; countK++; }
+            if (e.produkt === "Snack") { snack += e.prov; countS++; }
+            if (e.produkt === "Wasser") { wasser += e.prov; countW++; }
         }
     });
 
-    monat.innerText = "Aktuell: " + sum.toFixed(2) + " €";
-    letzter.innerText = "Vormonat: " + last.toFixed(2) + " €";
+    monat.innerText = "Provision: " + sum.toFixed(2) + " €";
+    letzter.innerText = "";
 
     stats.innerHTML =
         "<span class='kaffee'>☕ Kaffee:</span> " + kaffe.toFixed(2) + " €<br>" +
@@ -173,15 +188,17 @@ function update() {
         "<span class='snack'>🍫 Snack:</span> " + countS + " Stück<br>" +
         "<span class='wasser'>💧 Wasser:</span> " + countW + " Stück";
 
-    render();
+    render(selected);
     draw(kaffe, snack, wasser);
 }
 
-function render() {
+function render(selected) {
     liste.innerHTML="";
     data.sort((a,b)=>b.id-a.id);
 
     data.forEach(e => {
+        if (monthKey(e.datum) !== selected) return;
+
         let div = document.createElement("div");
         div.className = "entry";
 
@@ -199,6 +216,7 @@ function render() {
 function del(id) {
     data = data.filter(e => e.id !== id);
     save();
+    fillMonate();
     update();
 }
 
@@ -211,24 +229,19 @@ function draw(kaffe, snack, wasser) {
             labels: ["Kaffee", "Snack", "Wasser"],
             datasets: [{
                 data: [kaffe, snack, wasser],
-                backgroundColor: [
-                    "#6f4e37",
-                    "silver",
-                    "#4da6ff"
-                ]
+                backgroundColor: ["#6f4e37","silver","#4da6ff"]
             }]
         },
         options: {
             plugins: {
-                legend: {
-                    labels: { color: "white" }
-                }
+                legend: { labels: { color: "white" } }
             },
             cutout: "60%"
         }
     });
 }
 
+fillMonate();
 update();
 </script>
 
