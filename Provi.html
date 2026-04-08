@@ -7,11 +7,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { font-family: Arial; margin:0; background:#e3f2fd; }
+body { font-family: Arial; margin:0; background:#0b1a3a; color:white; }
 h1 { text-align:center; padding:15px; }
 .container { padding:10px; }
 .card {
-    background:white;
+    background:#132a5e;
     padding:15px;
     margin-bottom:10px;
     border-radius:10px;
@@ -27,20 +27,18 @@ button {
     border:none;
 }
 .entry {
-    border-bottom:1px solid #ddd;
+    border-bottom:1px solid #2c3e80;
     padding:8px;
 }
 .small { width:auto; padding:5px; }
-.success { color:green; }
-.error { color:red; }
 
 .kaffee { color:#6f4e37; font-weight:bold; }
 .snack { color:silver; font-weight:bold; }
-.wasser { color:#2196f3; font-weight:bold; }
+.wasser { color:#4da6ff; font-weight:bold; }
 
 canvas {
     width:100% !important;
-    height:250px !important;
+    height:260px !important;
 }
 </style>
 </head>
@@ -76,31 +74,18 @@ canvas {
 </div>
 
 <div class="card">
-<h3>📦 Produkt-Statistik</h3>
+<h3>📦 Kategorien</h3>
 <p id="stats"></p>
 </div>
 
 <div class="card">
-<h3>✅ Abgleich</h3>
-<select id="monatSelect"></select>
-<input type="number" id="ist" placeholder="Ist Provision">
-<button onclick="check()">Prüfen</button>
-<p id="result"></p>
-</div>
-
-<div class="card">
-<h3>📈 Diagramm</h3>
+<h3>📊 Diagramm</h3>
 <canvas id="chart"></canvas>
 </div>
 
 <div class="card">
 <h3>🗓 Einträge</h3>
 <div id="liste"></div>
-</div>
-
-<div class="card">
-<h3>📥 Export</h3>
-<button onclick="exportCSV()">CSV Export</button>
 </div>
 
 </div>
@@ -147,7 +132,9 @@ function update() {
     let sum = 0;
     let last = 0;
 
-    let stats = { Kaffee:0, Snack:0, Wasser:0 };
+    let kaffe = 0;
+    let snack = 0;
+    let wasser = 0;
 
     data.forEach(e => {
         let k = monthKey(e.datum);
@@ -155,62 +142,21 @@ function update() {
         if (k === current) sum += e.prov;
         if (k === lastKey) last += e.prov;
 
-        stats[e.produkt] += e.prov;
+        if (e.produkt === "Kaffee") kaffe += e.prov;
+        if (e.produkt === "Snack") snack += e.prov;
+        if (e.produkt === "Wasser") wasser += e.prov;
     });
 
-    monat.innerText = "Dieser Monat: " + sum.toFixed(2) + " €";
-    letzter.innerText = "Letzter Monat: " + last.toFixed(2) + " €";
+    monat.innerText = "Aktuell: " + sum.toFixed(2) + " €";
+    letzter.innerText = "Vormonat: " + last.toFixed(2) + " €";
 
-    statsEl.innerHTML =
-        "<span class='kaffee'>☕ Kaffee:</span> " + stats.Kaffee.toFixed(2) + " €<br>" +
-        "<span class='snack'>🍫 Snack:</span> " + stats.Snack.toFixed(2) + " €<br>" +
-        "<span class='wasser'>💧 Wasser:</span> " + stats.Wasser.toFixed(2) + " €";
+    stats.innerHTML =
+        "<span class='kaffee'>☕ Kaffee:</span> " + kaffe.toFixed(2) + " €<br>" +
+        "<span class='snack'>🍫 Snack:</span> " + snack.toFixed(2) + " €<br>" +
+        "<span class='wasser'>💧 Wasser:</span> " + wasser.toFixed(2) + " €";
 
-    fillSelect();
     render();
-    draw();
-}
-
-const statsEl = document.getElementById("stats");
-
-function fillSelect() {
-    monatSelect.innerHTML="";
-    let map={};
-
-    data.forEach(e=>{
-        map[monthKey(e.datum)] = e.datum;
-    });
-
-    for(let k in map){
-        let d = new Date(map[k]);
-        let opt=document.createElement("option");
-        opt.value=k;
-        opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
-        monatSelect.appendChild(opt);
-    }
-}
-
-function check() {
-    let key = monatSelect.value;
-    let istVal = parseFloat(ist.value);
-
-    let soll = 0;
-
-    data.forEach(e => {
-        if (monthKey(e.datum) === key) {
-            soll += e.prov;
-        }
-    });
-
-    let diff = istVal - soll;
-
-    if (Math.abs(diff) < 0.01) {
-        result.innerText = "✅ Passt genau!";
-        result.className = "success";
-    } else {
-        result.innerText = "❌ Abweichung: " + diff.toFixed(2) + " €";
-        result.className = "error";
-    }
+    draw(kaffe, snack, wasser);
 }
 
 function render() {
@@ -219,90 +165,47 @@ function render() {
 
     data.forEach(e => {
         let div = document.createElement("div");
-        div.className = "entry " + e.produkt.toLowerCase();
+        div.className = "entry";
 
         div.innerHTML =
             "<b>" + e.datum + "</b> | " +
             e.produkt + " | " +
             e.umsatz + "€ → " +
-            e.prov.toFixed(2) + "€<br>" +
-            "<button class='small' onclick='edit(" + e.id + ")'>✏️</button> " +
-            "<button class='small' onclick='del(" + e.id + ")'>❌</button>";
+            e.prov.toFixed(2) + "€";
 
         liste.appendChild(div);
     });
 }
 
-function del(id) {
-    data = data.filter(e => e.id !== id);
-    save();
-    update();
-}
-
-function edit(id) {
-    let e = data.find(x => x.id === id);
-
-    produkt.value = e.produkt;
-    umsatz.value = e.umsatz;
-    provision.value = e.provision;
-    datum.value = e.datum;
-
-    del(id);
-}
-
-function draw() {
-    let labels = [...new Set(data.map(e => e.datum))];
-
-    let kaffe = [];
-    let snack = [];
-    let wasser = [];
-
-    labels.forEach(date => {
-        let k=0,s=0,w=0;
-
-        data.forEach(e=>{
-            if(e.datum===date){
-                if(e.produkt==="Kaffee") k+=e.prov;
-                if(e.produkt==="Snack") s+=e.prov;
-                if(e.produkt==="Wasser") w+=e.prov;
-            }
-        });
-
-        kaffe.push(k);
-        snack.push(s);
-        wasser.push(w);
-    });
+function draw(kaffe, snack, wasser) {
 
     if (chart) chart.destroy();
 
-    chart = new Chart(chartEl, {
-        type: "bar",
+    chart = new Chart(document.getElementById("chart"), {
+        type: "doughnut",
         data: {
-            labels: labels,
-            datasets: [
-                { label:"Kaffee", data:kaffe, backgroundColor:"#6f4e37" },
-                { label:"Snack", data:snack, backgroundColor:"silver" },
-                { label:"Wasser", data:wasser, backgroundColor:"#2196f3" }
-            ]
+            labels: ["Kaffee", "Snack", "Wasser"],
+            datasets: [{
+                data: [kaffe, snack, wasser],
+                backgroundColor: [
+                    "#6f4e37",
+                    "silver",
+                    "#4da6ff"
+                ],
+                borderWidth: 3
+            }]
+        },
+        options: {
+            plugins: {
+                legend: {
+                    position: "top",
+                    labels: { color: "white" }
+                }
+            },
+            cutout: "60%"
         }
     });
 }
-
-function exportCSV() {
-    let csv = "Datum,Produkt,Umsatz,Provision\n";
-
-    data.forEach(e => {
-        csv += e.datum + "," + e.produkt + "," + e.umsatz + "," + e.prov.toFixed(2) + "\n";
-    });
-
-    let blob = new Blob([csv], { type: "text/csv" });
-    let a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "provision.csv";
-    a.click();
-}
-
-let chartEl = document.getElementById("chart");
 
 update();
 </script>
