@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Provisionsrechner PRO MAX</title>
+<title>Provisionsrechner PRO</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -62,7 +62,7 @@ canvas {
 
 <body>
 
-<h1>💰 Provisionsrechner PRO MAX</h1>
+<h1>💰 Provisionsrechner</h1>
 
 <div class="container">
 
@@ -80,14 +80,14 @@ canvas {
 </div>
 
 <div class="card">
-    <h3>📊 Statistik nach Produkt</h3>
-    <p id="stats"></p>
-</div>
-
-<div class="card">
     <h3>📅 Monatsübersicht</h3>
     <p id="monatSumme"></p>
     <p id="letzterMonat"></p>
+</div>
+
+<div class="card">
+    <h3>📊 Statistik</h3>
+    <p id="stats"></p>
 </div>
 
 <div class="card">
@@ -108,31 +108,21 @@ canvas {
     <div id="liste"></div>
 </div>
 
-<div class="card">
-    <h3>📥 Export</h3>
-    <button onclick="exportCSV()">CSV herunterladen</button>
-</div>
-
 </div>
 
 <script>
 let daten = JSON.parse(localStorage.getItem("daten")) || [];
 let chart;
 
-const produktEl = document.getElementById("produkt");
-const umsatzEl = document.getElementById("umsatz");
-const provisionEl = document.getElementById("provision");
-const datumEl = document.getElementById("datum");
-
 function save() {
     localStorage.setItem("daten", JSON.stringify(daten));
 }
 
 function addEntry() {
-    let produkt = produktEl.value;
-    let umsatz = parseFloat(umsatzEl.value);
-    let provision = parseFloat(provisionEl.value);
-    let datum = datumEl.value;
+    const produkt = document.getElementById("produkt").value;
+    const umsatz = parseFloat(document.getElementById("umsatz").value);
+    const provision = parseFloat(document.getElementById("provision").value);
+    const datum = document.getElementById("datum").value;
 
     if (!umsatz || !provision || !datum) {
         alert("Bitte alles ausfüllen!");
@@ -152,10 +142,16 @@ function addEntry() {
     update();
 }
 
+function getMonthKey(date) {
+    return date.getFullYear() + "-" + date.getMonth();
+}
+
 function update() {
-    let now = new Date();
-    let m = now.getMonth();
-    let y = now.getFullYear();
+    const now = new Date();
+    const currentKey = getMonthKey(now);
+
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastKey = getMonthKey(lastMonthDate);
 
     let sum = 0;
     let last = 0;
@@ -163,18 +159,14 @@ function update() {
     let stats = { Kaffee:0, Snack:0, Wasser:0 };
 
     daten.forEach(d => {
-        let dt = new Date(d.datum);
+        const dt = new Date(d.datum);
+        const key = getMonthKey(dt);
 
-        if (dt.getMonth() === m && dt.getFullYear() === y) {
-            sum += d.prov;
-        }
+        if (key === currentKey) sum += d.prov;
+        if (key === lastKey) last += d.prov;
 
-        if (dt.getMonth() === m - 1 && dt.getFullYear() === y) {
-            last += d.prov;
-        }
-
-        let key = d.produkt.split(" ")[0];
-        stats[key] += d.prov;
+        let p = d.produkt.split(" ")[0];
+        stats[p] += d.prov;
     });
 
     document.getElementById("monatSumme").innerText =
@@ -194,42 +186,40 @@ function update() {
 }
 
 function fillDropdown() {
-    let select = document.getElementById("vergleichMonat");
+    const select = document.getElementById("vergleichMonat");
     select.innerHTML = "";
 
-    let map = {};
+    let seen = {};
 
     daten.forEach(d => {
-        let dt = new Date(d.datum);
-        let key = dt.getFullYear() + "-" + dt.getMonth();
-        map[key] = dt;
+        const dt = new Date(d.datum);
+        const key = getMonthKey(dt);
+        seen[key] = dt;
     });
 
-    Object.values(map).forEach(dt => {
-        let option = document.createElement("option");
-        option.value = dt.getFullYear() + "-" + dt.getMonth();
-        option.text = dt.toLocaleString("de-DE", { month: "long", year: "numeric" });
-        select.appendChild(option);
+    Object.values(seen).forEach(dt => {
+        const opt = document.createElement("option");
+        opt.value = getMonthKey(dt);
+        opt.text = dt.toLocaleString("de-DE", { month: "long", year: "numeric" });
+        select.appendChild(opt);
     });
 }
 
 function checkProvision() {
-    let select = document.getElementById("vergleichMonat").value;
-    let ist = parseFloat(document.getElementById("istProvision").value);
-
-    let [jahr, monat] = select.split("-").map(Number);
+    const key = document.getElementById("vergleichMonat").value;
+    const ist = parseFloat(document.getElementById("istProvision").value);
 
     let soll = 0;
 
     daten.forEach(d => {
-        let dt = new Date(d.datum);
-        if (dt.getFullYear() === jahr && dt.getMonth() === monat) {
+        const dt = new Date(d.datum);
+        if (getMonthKey(dt) === key) {
             soll += d.prov;
         }
     });
 
-    let diff = ist - soll;
-    let el = document.getElementById("checkResult");
+    const diff = ist - soll;
+    const el = document.getElementById("checkResult");
 
     if (Math.abs(diff) < 0.01) {
         el.innerText = "✅ Passt genau!";
@@ -241,20 +231,20 @@ function checkProvision() {
 }
 
 function renderList() {
-    let liste = document.getElementById("liste");
+    const liste = document.getElementById("liste");
     liste.innerHTML = "";
 
-    daten.sort((a, b) => b.id - a.id);
+    daten.sort((a,b)=>b.id-a.id);
 
     daten.forEach(d => {
-        let div = document.createElement("div");
+        const div = document.createElement("div");
         div.className = "entry";
 
         div.innerHTML =
-            "<b>" + d.datum + "</b><br>" +
-            d.produkt + " | " + d.umsatz + "€ → " + d.prov.toFixed(2) + "€<br>" +
-            "<button class='small-btn' onclick='edit(" + d.id + ")'>✏️</button> " +
-            "<button class='small-btn' onclick='del(" + d.id + ")'>❌</button>";
+            "<b>"+d.datum+"</b><br>" +
+            d.produkt+" | "+d.umsatz+"€ → "+d.prov.toFixed(2)+"€<br>" +
+            "<button class='small-btn' onclick='edit("+d.id+")'>✏️</button> " +
+            "<button class='small-btn' onclick='del("+d.id+")'>❌</button>";
 
         liste.appendChild(div);
     });
@@ -267,19 +257,19 @@ function del(id) {
 }
 
 function edit(id) {
-    let d = daten.find(x => x.id === id);
+    const d = daten.find(x => x.id === id);
 
-    produktEl.value = d.produkt;
-    umsatzEl.value = d.umsatz;
-    provisionEl.value = d.provision;
-    datumEl.value = d.datum;
+    document.getElementById("produkt").value = d.produkt;
+    document.getElementById("umsatz").value = d.umsatz;
+    document.getElementById("provision").value = d.provision;
+    document.getElementById("datum").value = d.datum;
 
     del(id);
 }
 
 function drawChart() {
-    let labels = daten.map(d => d.datum);
-    let values = daten.map(d => d.prov);
+    const labels = daten.map(d => d.datum);
+    const values = daten.map(d => d.prov);
 
     if (chart) chart.destroy();
 
@@ -293,20 +283,6 @@ function drawChart() {
             }]
         }
     });
-}
-
-function exportCSV() {
-    let csv = "Datum,Produkt,Umsatz,Provision\n";
-
-    daten.forEach(d => {
-        csv += d.datum + "," + d.produkt + "," + d.umsatz + "," + d.prov.toFixed(2) + "\n";
-    });
-
-    let blob = new Blob([csv], { type: "text/csv" });
-    let a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "provision.csv";
-    a.click();
 }
 
 update();
