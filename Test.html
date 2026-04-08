@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seriennummer Scanner PRO</title>
+<title>Scanner ENDSTUFE</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
@@ -11,18 +11,15 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: #0f172a;
   color: white;
   text-align: center;
-  padding: 20px;
 }
 
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 20px;
+.container {
   max-width: 420px;
   margin: auto;
+  padding: 15px;
 }
 
 input {
@@ -32,16 +29,16 @@ input {
   border-radius: 12px;
   border: none;
   margin-top: 10px;
-  background: #0f172a;
+  background: #1e293b;
   color: white;
 }
 
 #result {
   margin-top: 15px;
   font-size: 24px;
-  font-weight: bold;
-  padding: 10px;
+  padding: 12px;
   border-radius: 12px;
+  font-weight: bold;
 }
 
 .ok { background: #064e3b; color: #34d399; }
@@ -53,40 +50,73 @@ video {
   margin-top: 15px;
   border-radius: 12px;
 }
+
+/* 🔥 Scan-Rahmen */
+.scan-box {
+  position: relative;
+}
+
+.scan-area {
+  position: absolute;
+  top: 30%;
+  left: 10%;
+  width: 80%;
+  height: 20%;
+  border: 3px solid #22c55e;
+  border-radius: 10px;
+  box-shadow: 0 0 15px #22c55e;
+}
+
+/* Reset Button */
+button {
+  margin-top: 10px;
+  padding: 12px;
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 16px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="card">
+<div class="container">
 
-<h2>📷 Seriennummer Scanner</h2>
+<h2>📷 Scanner ENDSTUFE</h2>
 
-<input type="text" id="serialInput" placeholder="Oder manuell eingeben">
+<input id="serialInput" placeholder="Oder manuell eingeben">
 
 <div id="result"></div>
 
-<video id="video" autoplay playsinline></video>
+<div class="scan-box">
+  <video id="video" autoplay playsinline></video>
+  <div class="scan-area"></div>
+</div>
+
 <canvas id="canvas" style="display:none;"></canvas>
+
+<button onclick="resetScan()">🔄 Neuer Scan</button>
 
 </div>
 
 <script>
 
-// 🔥 INPUT NORMALISIERUNG (sehr wichtig)
+// 🔥 NORMALISIERUNG
 function normalizeInput(input) {
-  let text = input.toUpperCase();
-  text = text.replace(/O/g, "0");
-  text = text.replace(/[^A-Z0-9]/g, "");
-  return text;
+  return input
+    .toUpperCase()
+    .replace(/O/g, "0")
+    .replace(/[^A-Z0-9]/g, "");
 }
 
-// 🔥 SERIENNUMMER FINDEN (auch bei Müll drumherum)
+// 🔥 SERIENNUMMER ERKENNEN
 function extractSerial(text) {
   const cleaned = normalizeInput(text);
   const match = cleaned.match(/(CP\d{2})(\d{8})(\d{3})/);
-  if (!match) return null;
-  return `${match[1]}-${match[2]}-${match[3]}`;
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null;
 }
 
 function parseSerial(serial) {
@@ -115,24 +145,26 @@ const ranges = [
 ];
 
 function checkSerial(serial) {
-  const resultDiv = document.getElementById("result");
+  const r = document.getElementById("result");
 
   const s = parseSerial(serial);
 
-  const hit = ranges.some(r =>
-    inRange(s, parseSerial(r[0]), parseSerial(r[1]))
+  const hit = ranges.some(range =>
+    inRange(s, parseSerial(range[0]), parseSerial(range[1]))
   );
 
   if (hit) {
-    resultDiv.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
-    resultDiv.className = "bad";
+    r.innerHTML = "⚠️ SCHALTER TAUSCHEN!";
+    r.className = "bad";
   } else {
-    resultDiv.innerHTML = "✅ Kein Tausch erforderlich";
-    resultDiv.className = "ok";
+    r.innerHTML = "✅ OK";
+    r.className = "ok";
   }
 }
 
-// 🎥 KAMERA START
+// 🎥 Kamera
+let scanning = true;
+
 async function startCamera() {
   const video = document.getElementById("video");
 
@@ -142,15 +174,12 @@ async function startCamera() {
 
   video.srcObject = stream;
 
-  setInterval(scanFrame, 2000); // alle 2 Sekunden
+  requestAnimationFrame(scanLoop);
 }
 
-// 🔍 OCR SCAN
-let scanning = false;
-
-async function scanFrame() {
-  if (scanning) return;
-  scanning = true;
+// 🔥 LIVE SCAN LOOP
+async function scanLoop() {
+  if (!scanning) return;
 
   const video = document.getElementById("video");
   const canvas = document.getElementById("canvas");
@@ -159,22 +188,35 @@ async function scanFrame() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.drawImage(video, 0, 0);
+  // 🔥 Nur Scanbereich (Mitte)
+  const sx = canvas.width * 0.1;
+  const sy = canvas.height * 0.3;
+  const sw = canvas.width * 0.8;
+  const sh = canvas.height * 0.2;
+
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
 
   const result = await Tesseract.recognize(canvas, 'eng');
 
   const text = result.data.text;
-
-  console.log("OCR:", text);
 
   const serial = extractSerial(text);
 
   if (serial) {
     document.getElementById("serialInput").value = serial;
     checkSerial(serial);
+    scanning = false; // STOP!
+    return;
   }
 
-  scanning = false;
+  requestAnimationFrame(scanLoop);
+}
+
+// 🔄 Reset
+function resetScan() {
+  scanning = true;
+  document.getElementById("result").innerHTML = "";
+  requestAnimationFrame(scanLoop);
 }
 
 // 🚀 START
