@@ -1,4 +1,3 @@
-001"}
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -14,6 +13,7 @@ h1{text-align:center;padding:15px;}
 .card{background:#132a5e;padding:15px;margin-bottom:10px;border-radius:10px;}
 input,select,button{width:100%;padding:10px;margin-top:8px;}
 button{background:#2196f3;color:white;border:none;}
+.entry{border-bottom:1px solid #2c3e80;padding:8px;}
 
 .progress{background:#1e3c72;border-radius:10px;overflow:hidden;margin-top:10px;}
 .progress-bar{height:20px;text-align:center;font-size:12px;}
@@ -40,9 +40,11 @@ canvas{width:100%!important;height:260px!important;}
 <option>Snack</option>
 <option>Wasser</option>
 </select>
+
 <input type="number" id="umsatz" placeholder="Umsatz €">
 <input type="number" id="provision" placeholder="Provision %">
 <input type="date" id="datum">
+
 <button onclick="addEntry()">Speichern</button>
 </div>
 
@@ -52,12 +54,14 @@ canvas{width:100%!important;height:260px!important;}
 </div>
 
 <div class="card">
-<h3>🎯 Ziel</h3>
+<h3>🎯 Monatsziel</h3>
+
 <select id="zielTyp" onchange="saveZiel();update();">
 <option value="prov">Provision</option>
 <option value="umsatz">Umsatz</option>
 </select>
-<input type="number" id="ziel" oninput="saveZiel();update();">
+
+<input type="number" id="ziel" placeholder="Ziel €" oninput="saveZiel();update()">
 
 <div class="progress">
 <div id="bar" class="progress-bar">0%</div>
@@ -65,21 +69,24 @@ canvas{width:100%!important;height:260px!important;}
 </div>
 
 <div class="card">
-<h3>📊 Diagramm</h3>
+<h3>🍩 Diagramm</h3>
 <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+<h3>🗓 Einträge</h3>
+<div id="liste"></div>
 </div>
 
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("data")) || [];
+let data = JSON.parse(localStorage.getItem("provData")) || [];
 let chart;
-
-datum.valueAsDate = new Date();
 
 // 👉 Ziel speichern
 function saveZiel(){
-localStorage.setItem("ziel", JSON.stringify({
+localStorage.setItem("zielData", JSON.stringify({
 wert: Number(ziel.value)||0,
 typ: zielTyp.value
 }));
@@ -87,9 +94,16 @@ typ: zielTyp.value
 
 // 👉 Ziel laden
 function loadZiel(){
-let z = JSON.parse(localStorage.getItem("ziel"))||{};
+let z = JSON.parse(localStorage.getItem("zielData")) || {};
 ziel.value = z.wert || "";
 zielTyp.value = z.typ || "prov";
+}
+
+// Datum setzen
+datum.valueAsDate = new Date();
+
+function save(){
+localStorage.setItem("provData", JSON.stringify(data));
 }
 
 function addEntry(){
@@ -97,45 +111,49 @@ let u=Number(umsatz.value);
 let p=Number(provision.value);
 let d=datum.value;
 
-if(!u||!p||!d){alert("Fehlt was");return;}
+if(!u||!p||!d){alert("Bitte alles ausfüllen");return;}
 
 data.push({
-datum:d,
+id:Date.now(),
 produkt:produkt.value,
 umsatz:u,
+datum:d,
 prov:u*p/100
 });
 
-localStorage.setItem("data",JSON.stringify(data));
-
-fillMonths();
+save();
+fillMonate();
 update();
+
+umsatz.value="";
+provision.value="";
 }
 
-function monthKey(d){
-let dt=new Date(d);
+function monthKey(date){
+let dt=new Date(date);
 return dt.getFullYear()+"-"+dt.getMonth();
 }
 
-function fillMonths(){
+function fillMonate(){
 monatFilter.innerHTML="";
-let m={};
+let map={};
 
-data.forEach(e=>m[monthKey(e.datum)]=e.datum);
+data.forEach(e=>map[monthKey(e.datum)]=e.datum);
 
-Object.keys(m).forEach(k=>{
-let d=new Date(m[k]);
-let o=document.createElement("option");
-o.value=k;
-o.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
-monatFilter.appendChild(o);
+Object.keys(map).sort().reverse().forEach(k=>{
+let d=new Date(map[k]);
+let opt=document.createElement("option");
+opt.value=k;
+opt.text=d.toLocaleString("de-DE",{month:"long",year:"numeric"});
+monatFilter.appendChild(opt);
 });
 }
 
 function update(){
 
-// 👉 Monat fix setzen
 let selected=monatFilter.value;
+
+// 👉 wenn nichts gewählt → letzten Monat nehmen
 if(!selected && data.length){
 selected=monthKey(data[data.length-1].datum);
 monatFilter.value=selected;
@@ -150,8 +168,9 @@ ums+=e.umsatz;
 }
 });
 
-// 👉 Ziel
-let zielVal=Number(ziel.value);
+// 👉 Ziel sauber lesen
+let zielVal = Number(ziel.value);
+
 if(!zielVal || zielVal<=0){
 bar.style.width="0%";
 bar.innerText="0%";
@@ -160,16 +179,16 @@ return;
 
 let val = zielTyp.value==="umsatz"?ums:prov;
 
-// 👉 PROZENT (FINAL FIX)
+// 👉 HIER IST DER FIX
 let percent = (val / zielVal) * 100;
 if(!isFinite(percent)) percent=0;
 
-// 👉 nur visuell begrenzen
+// 👉 Balken max 100
 let width = Math.min(percent,100);
 
-bar.style.width = width+"%";
+bar.style.width = width + "%";
 
-// 👉 TEXT = echter Wert!
+// 👉 TEXT = echter Wert
 bar.innerText =
 percent.toFixed(1)+"% ("+
 val.toFixed(2)+"€ / "+
@@ -182,8 +201,25 @@ else if(percent>=100)bar.classList.add("green");
 else if(percent>=50)bar.classList.add("yellow");
 else bar.classList.add("red");
 
-// 👉 Diagramm
+// Diagramm
 draw(prov,ums);
+
+// Liste
+render(selected);
+}
+
+function render(selected){
+liste.innerHTML="";
+
+data.forEach(e=>{
+if(monthKey(e.datum)!==selected)return;
+
+let div=document.createElement("div");
+div.className="entry";
+div.innerHTML=
+"<b>"+e.datum+"</b> | "+e.produkt+" | "+e.umsatz+"€ → "+e.prov.toFixed(2)+"€";
+liste.appendChild(div);
+});
 }
 
 function draw(p,u){
@@ -199,10 +235,11 @@ datasets:[{data:[p,u]}]
 
 let chartEl=document.getElementById("chart");
 
+// INIT
 loadZiel();
-fillMonths();
+fillMonate();
 update();
 </script>
 
 </body>
-</
+</html>
