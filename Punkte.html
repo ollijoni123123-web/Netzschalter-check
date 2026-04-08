@@ -73,6 +73,8 @@ canvas {
 .pdf { background: #7c3aed; }
 .save { background: #16a34a; }
 .reset { background: #dc2626; }
+.backup { background: #f59e0b; }
+.restore { background: #0ea5e9; }
 </style>
 </head>
 
@@ -117,6 +119,8 @@ canvas {
 <div class="section">
   <button class="export" onclick="exportData()">📄 Export</button>
   <button class="pdf" onclick="createPDF()">📄 PDF</button>
+  <button class="backup" onclick="backupData()">💾 Backup</button>
+  <input type="file" class="restore" onchange="restoreData(event)">
   <button class="reset" onclick="clearAll()">🧹 Reset</button>
 </div>
 
@@ -160,6 +164,7 @@ function loadData() {
 
 function saveData(data) {
   localStorage.setItem("points", JSON.stringify(data));
+  localStorage.setItem("backup_auto", JSON.stringify(data)); // 🔥 Auto Backup
 }
 
 function loadBoss() {
@@ -277,8 +282,16 @@ function drawChart(categories){
   chart = new Chart(ctx,{
     type:"doughnut",
     data:{
-      labels:Object.keys(categories),
-      datasets:[{data:Object.values(categories)}]
+      labels:["Service","Wartung","Installation","Sonstiges"],
+      datasets:[{
+        data:Object.values(categories),
+        backgroundColor:[
+          "#3b82f6",
+          "#6b3f1d",
+          "#9ca3af",
+          "#10b981"
+        ]
+      }]
     }
   });
 }
@@ -302,10 +315,32 @@ function createPDF(){
   win.print();
 }
 
-/* 🔐 RESET MIT PASSWORT */
+function backupData(){
+  const data = localStorage.getItem("points");
+  const blob = new Blob([data], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "backup.json";
+  a.click();
+}
+
+function restoreData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    localStorage.setItem("points", e.target.result);
+    alert("Backup geladen");
+    render();
+  };
+  reader.readAsText(file);
+}
+
 function clearAll(){
   const pw = prompt("Passwort eingeben:");
-
   if(pw === "2015"){
     if(confirm("Wirklich ALLES löschen?")){
       localStorage.removeItem("points");
@@ -317,7 +352,6 @@ function clearAll(){
   }
 }
 
-/* 🔥 BUTTONS */
 const btnDiv = document.getElementById("buttons");
 
 function createRow(groupName) {
