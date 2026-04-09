@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Dashboard PRO</title>
+<title>Provisions Dashboard PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -26,9 +26,7 @@ button { background:#3b82f6; color:white;}
 .entry { background:#334155; padding:10px; border-radius:12px; margin-top:8px;}
 .storno { opacity:0.4; text-decoration:line-through;}
 
-.actions button {
-    margin-top:5px;
-}
+.actions button { margin-top:5px; }
 
 .badge { padding:5px 10px; border-radius:10px;}
 .kaffee { background:brown; }
@@ -45,19 +43,24 @@ button { background:#3b82f6; color:white;}
 
 <div class="card">
 <input id="kunde" placeholder="Kundenname">
+
 <select id="typ">
 <option>Kaffee</option>
 <option>Snack</option>
 <option>Wasser</option>
 </select>
+
 <input id="umsatz" type="number" placeholder="Umsatz €">
 <input id="provision" type="number" placeholder="Provision %">
 <input id="datum" type="date">
+
 <button onclick="addEntry()">Speichern</button>
 </div>
 
 <div class="card">
 <input type="month" id="monatFilter" onchange="update()">
+<input type="text" id="suche" placeholder="🔍 Kunde suchen..." oninput="update()">
+
 <div class="big" id="umsatzBig"></div>
 <div class="big" id="provBig"></div>
 <div id="trend"></div>
@@ -82,6 +85,7 @@ button { background:#3b82f6; color:white;}
 <script>
 let data = JSON.parse(localStorage.getItem("data")) || [];
 
+// Standard Datum + Monat
 let today = new Date();
 datum.value = today.toISOString().split("T")[0];
 monatFilter.value = today.toISOString().slice(0,7);
@@ -97,7 +101,7 @@ function addEntry(){
     };
 
     if(!e.kunde || !e.umsatz || !e.provision){
-        alert("Bitte ausfüllen");
+        alert("Bitte alles ausfüllen");
         return;
     }
 
@@ -140,6 +144,8 @@ function getMonthSum(month){
 
 function update(){
     let filter = monatFilter.value;
+    let search = suche.value.toLowerCase();
+
     let list = document.getElementById("list");
     list.innerHTML="";
 
@@ -163,7 +169,8 @@ function update(){
     let k=0,s=0,w=0;
 
     data.forEach((e,i)=>{
-        if(!e.datum.startsWith(filter)) return;
+        if(filter && !e.datum.startsWith(filter)) return;
+        if(search && !e.kunde.toLowerCase().includes(search)) return;
 
         let prov = e.umsatz * e.provision/100;
 
@@ -179,7 +186,7 @@ function update(){
             <span class="badge ${e.typ.toLowerCase()}">${e.typ}</span><br>
             ${e.umsatz}€ | ${prov.toFixed(2)}€<br>
             ${e.datum}
-            
+
             <div class="actions">
                 <button onclick="toggleStorno(${i})">
                     ${e.storno?"Rückgängig":"Storno"}
@@ -206,7 +213,6 @@ function updateChart(k,s,w){
     });
 }
 
-// 👉 FIXED PDF EXPORT
 function exportPDF(){
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
@@ -255,5 +261,6 @@ function exportPDF(){
 
 update();
 </script>
+
 </body>
 </html>
