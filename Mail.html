@@ -6,103 +6,40 @@
 <title>Email Vorlagen</title>
 
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    margin: 0;
-}
-
-.tabs {
-    display: flex;
-    background: #007AFF;
-}
-
-.tabs button {
-    flex: 1;
-    padding: 15px;
-    border: none;
-    background: #007AFF;
-    color: white;
-    font-weight: bold;
-}
-
-.tabs button.active {
-    background: #005BBB;
-}
-
-.container {
-    display: none;
-    padding: 20px;
-}
-
-.container.active {
-    display: block;
-}
-
-.box {
-    max-width: 500px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-}
-
-input, textarea, select, button {
-    width: 100%;
-    margin-top: 10px;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-}
-
-button.send {
-    background: #007AFF;
-    color: white;
-    font-weight: bold;
-    border: none;
-}
-
-table {
-    width: 100%;
-    margin-top: 10px;
-    border-collapse: collapse;
-}
-
-td, th {
-    border: 1px solid #ccc;
-    padding: 8px;
-}
+body {font-family: Arial; background:#f4f4f4; margin:0;}
+.tabs {display:flex; background:#007AFF;}
+.tabs button {flex:1; padding:15px; border:none; background:#007AFF; color:white; font-weight:bold;}
+.tabs button.active {background:#005BBB;}
+.container {display:none; padding:20px;}
+.container.active {display:block;}
+.box {max-width:500px; margin:auto; background:white; padding:20px; border-radius:10px;}
+input, textarea, select, button {width:100%; margin-top:10px; padding:12px; border-radius:8px; border:1px solid #ccc;}
+button.send {background:#007AFF; color:white; font-weight:bold; border:none;}
+table {width:100%; margin-top:10px; border-collapse:collapse;}
+td, th {border:1px solid #ccc; padding:8px;}
 </style>
 </head>
 
 <body>
 
 <div class="tabs">
-    <button class="active" onclick="openTab(0)">Auftrag</button>
-    <button onclick="openTab(1)">KVA</button>
-    <button onclick="openTab(2)">Deinstallation</button>
+<button class="active" onclick="openTab(0)">Auftrag</button>
+<button onclick="openTab(1)">KVA</button>
+<button onclick="openTab(2)">Deinstallation</button>
+<button onclick="openTab(3)">Montage</button>
 </div>
 
 <!-- Auftrag -->
-<div class="container active">
-<div class="box">
-
+<div class="container active"><div class="box">
 <h3>Auftragserstellung</h3>
-
 <input id="serial" placeholder="Serialnummer">
 <textarea id="grund" placeholder="Grund"></textarea>
-
 <button class="send" onclick="sendAuftrag()">Mail erstellen</button>
-
-</div>
-</div>
+</div></div>
 
 <!-- KVA -->
-<div class="container">
-<div class="box">
-
+<div class="container"><div class="box">
 <h3>KVA erstellen</h3>
-
 <input id="kundennummer" placeholder="Kundennummer">
 <input id="kundenname" placeholder="Kundenname">
 <input id="svau" placeholder="SVAU">
@@ -111,19 +48,13 @@ td, th {
 
 <select id="express">
 <option value="">Expressversand wählen</option>
-<option>Ja</option>
-<option>Nein</option>
+<option>Ja</option><option>Nein</option>
 </select>
 
 <textarea id="bemerkung" placeholder="Bemerkung"></textarea>
 
 <table id="table">
-<tr>
-<th>Menge</th>
-<th>Artikelnummer</th>
-<th>Bezeichnung</th>
-</tr>
-
+<tr><th>Menge</th><th>Artikelnummer</th><th>Bezeichnung</th></tr>
 <tr><td>1</td><td>5999/001</td><td>Anfahrt</td></tr>
 <tr><td>1</td><td>5999/03</td><td>Pauschale</td></tr>
 <tr><td>1</td><td>5999/012</td><td>Verbrauchsmaterialien</td></tr>
@@ -134,186 +65,140 @@ for(let i=0;i<11;i++){
 document.write('<tr><td><input></td><td><input></td><td><input></td></tr>');
 }
 </script>
-
 </table>
 
 <button class="send" onclick="sendKVA()">KVA Mail erstellen</button>
-
-</div>
-</div>
+</div></div>
 
 <!-- Deinstallation -->
-<div class="container">
-<div class="box">
-
+<div class="container"><div class="box">
 <h3>DeInstallation beim Kunden</h3>
 
 <table>
 <tr><th colspan="2">DeInstallation beim Kunden</th></tr>
-
 <tr><td>Kundennummer</td><td><input id="d_kundennummer"></td></tr>
 <tr><td>Kundenname</td><td><input id="d_kundenname"></td></tr>
 <tr><td>SVAU</td><td><input id="d_svau"></td></tr>
 
-<tr>
-<td>DeInstallation erfolgt</td>
-<td>
-<select id="d_erfolgt">
-<option value="">Bitte wählen</option>
-<option>Ja</option>
-<option>Nein</option>
-</select>
-</td>
-</tr>
+<tr><td>DeInstallation erfolgt</td>
+<td><select id="d_erfolgt"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
 
-<tr>
-<td>Falls nein Grund</td>
-<td><input id="d_grund"></td>
-</tr>
+<tr><td>Falls nein Grund</td><td><input id="d_grund"></td></tr>
 
-<tr>
-<td>Gerät abholbereit</td>
-<td>
-<select id="d_abholbereit">
-<option value="">Bitte wählen</option>
-<option>Ja</option>
-<option>Nein</option>
-</select>
-</td>
-</tr>
+<tr><td>Gerät abholbereit</td>
+<td><select id="d_abholbereit"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
 
-<tr>
-<td>Mitnahme durch ST</td>
-<td>
-<select id="d_mitnahme">
-<option value="">Bitte wählen</option>
-<option>Ja</option>
-<option>Nein</option>
-</select>
-</td>
-</tr>
-
+<tr><td>Mitnahme durch ST</td>
+<td><select id="d_mitnahme"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
 </table>
 
 <button class="send" onclick="sendDeinstall()">Mail erstellen</button>
+</div></div>
 
-</div>
-</div>
+<!-- Montage -->
+<div class="container"><div class="box">
+<h3>Montage / To-do</h3>
+
+<table>
+<tr><th colspan="2">Montage</th></tr>
+
+<tr><td>SVAU Nummer</td><td><input id="m_svau"></td></tr>
+<tr><td>Kundennummer</td><td><input id="m_kdnr"></td></tr>
+<tr><td>Gerätetyp</td><td><input id="m_typ"></td></tr>
+<tr><td>Seriennummer</td><td><input id="m_serial"></td></tr>
+<tr><td>Spedition</td><td><input id="m_spedition"></td></tr>
+<tr><td>Geliefert am</td><td><input id="m_datum"></td></tr>
+
+<tr><td>Gerät ausgepackt</td>
+<td><select id="m_ausgepackt"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
+
+<tr><td>Verpackung entsorgt</td>
+<td><select id="m_entsorgt"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
+
+<tr><td>Kundenzufriedenheit Gerät</td><td><input id="m_zufriedenheit1"></td></tr>
+<tr><td>Kundenzufriedenheit Spedition</td><td><input id="m_zufriedenheit2"></td></tr>
+<tr><td>Bemerkung / Fehler</td><td><textarea id="m_bemerkung"></textarea></td></tr>
+
+</table>
+
+<button class="send" onclick="sendMontage()">Mail erstellen</button>
+
+</div></div>
 
 <script>
 
-// Tabs
-function openTab(index){
-    let tabs = document.querySelectorAll(".container");
-    let buttons = document.querySelectorAll(".tabs button");
-
-    tabs.forEach((t,i)=>t.classList.toggle("active", i===index));
-    buttons.forEach((b,i)=>b.classList.toggle("active", i===index));
+function openTab(i){
+let c=document.querySelectorAll(".container");
+let b=document.querySelectorAll(".tabs button");
+c.forEach((e,x)=>e.classList.toggle("active",x===i));
+b.forEach((e,x)=>e.classList.toggle("active",x===i));
 }
 
 // Auftrag
 function sendAuftrag(){
-let serial = document.getElementById("serial").value;
-let grund = document.getElementById("grund").value;
-
-if(!serial || !grund){
-    alert("Bitte alles ausfüllen!");
-    return;
+let s=serial.value,g=grund.value;
+if(!s||!g){alert("Bitte alles ausfüllen!");return;}
+let body="Moin,%0D%0A%0D%0Amögt ihr mir bitte einmal für folgendes Gerät "+s+" einen Service erstellen?%0D%0A%0D%0A"+g+"%0D%0A%0D%0ADanke und schönen Tag";
+location.href="mailto:service@coffee-perfect.de?subject=Service&body="+body;
 }
 
-let body =
-"Moin,%0D%0A%0D%0A" +
-"mögt ihr mir bitte einmal für folgendes Gerät " + serial + " einen Service erstellen?%0D%0A%0D%0A" +
-grund + "%0D%0A%0D%0A" +
-"Danke und schönen Tag";
-
-window.location.href =
-"mailto:service@coffee-perfect.de?subject=Service&body=" + body;
-}
-
-// KVA
+// KVA (gleich wie vorher)
 function sendKVA(){
-
-let kundennummer = document.getElementById("kundennummer").value;
-let kundenname = document.getElementById("kundenname").value;
-let svau = document.getElementById("svau").value;
-let ansprechpartner = document.getElementById("ansprechpartner").value;
-let tele = document.getElementById("tele").value;
-let express = document.getElementById("express").value;
-
-if(!kundennummer || !kundenname || !svau || !ansprechpartner || !tele || !express){
-    alert("Bitte alle Pflichtfelder ausfüllen!");
-    return;
-}
-
-let rows = document.getElementById("table").rows;
-let tableText = "";
-
+let k=kundennummer.value,n=kundenname.value,s=svau.value,a=ansprechpartner.value,t=tele.value,e=express.value;
+if(!k||!n||!s||!a||!t||!e){alert("Bitte alles ausfüllen!");return;}
+let rows=document.getElementById("table").rows,txt="";
 for(let i=1;i<rows.length;i++){
-    let cols = rows[i].cells;
-
-    let m = cols[0].innerText || cols[0].querySelector("input")?.value;
-    let a = cols[1].innerText || cols[1].querySelector("input")?.value;
-    let b = cols[2].innerText || cols[2].querySelector("input")?.value;
-
-    if(m || a || b){
-        tableText += m + " | " + a + " | " + b + "%0D%0A";
-    }
+let c=rows[i].cells;
+let m=c[0].innerText||c[0].querySelector("input")?.value;
+let ar=c[1].innerText||c[1].querySelector("input")?.value;
+let b=c[2].innerText||c[2].querySelector("input")?.value;
+if(m||ar||b){txt+=m+" | "+ar+" | "+b+"%0D%0A";}
 }
-
-let body =
-"Hallo zusammen,%0D%0A%0D%0A" +
-"Bitte einen Kostenvoranschlag erstellen und an den Kunden senden.%0D%0A%0D%0A" +
-
-"Kundennummer: " + kundennummer + "%0D%0A" +
-"Kundenname: " + kundenname + "%0D%0A" +
-"SVAU: " + svau + "%0D%0A" +
-"Ansprechpartner: " + ansprechpartner + "%0D%0A" +
-"Telefon: " + tele + "%0D%0A" +
-"Expressversand: " + express + "%0D%0A%0D%0A" +
-
-"Positionen:%0D%0A" +
-tableText + "%0D%0A" +
-
-"Bemerkung:%0D%0A" + document.getElementById("bemerkung").value;
-
-window.location.href =
-"mailto:service@coffee-perfect.de?subject=KVA erstellen&body=" + body;
+let body="Hallo zusammen,%0D%0A%0D%0ABitte einen Kostenvoranschlag erstellen und an den Kunden senden.%0D%0A%0D%0A"+
+"Kundennummer: "+k+"%0D%0AKundenname: "+n+"%0D%0ASVAU: "+s+"%0D%0AAnsprechpartner: "+a+
+"%0D%0ATelefon: "+t+"%0D%0AExpressversand: "+e+"%0D%0A%0D%0APositionen:%0D%0A"+txt+
+"%0D%0ABemerkung:%0D%0A"+bemerkung.value;
+location.href="mailto:service@coffee-perfect.de?subject=KVA erstellen&body="+body;
 }
 
 // Deinstallation
 function sendDeinstall(){
-
-let kundennummer = document.getElementById("d_kundennummer").value;
-let kundenname = document.getElementById("d_kundenname").value;
-let svau = document.getElementById("d_svau").value;
-let erfolgt = document.getElementById("d_erfolgt").value;
-let grund = document.getElementById("d_grund").value;
-let abholbereit = document.getElementById("d_abholbereit").value;
-let mitnahme = document.getElementById("d_mitnahme").value;
-
-if(!kundennummer || !kundenname || !svau || !erfolgt || !abholbereit || !mitnahme){
-    alert("Bitte alle Pflichtfelder ausfüllen!");
-    return;
+let body="Hallo zusammen,%0D%0A%0D%0A"+
+"Kundennummer: "+d_kundennummer.value+"%0D%0AKundenname: "+d_kundenname.value+
+"%0D%0ASVAU: "+d_svau.value+"%0D%0A%0D%0A"+
+"DeInstallation erfolgt: "+d_erfolgt.value+"%0D%0A"+
+"Grund: "+d_grund.value+"%0D%0A%0D%0A"+
+"Abholbereit: "+d_abholbereit.value+"%0D%0A"+
+"Mitnahme: "+d_mitnahme.value;
+location.href="mailto:ordermanagment@coffee-perfect.de?subject=Deinstallation beim Kunden - Beauftragung Abholung&body="+body;
 }
 
-let body =
-"Hallo zusammen,%0D%0A%0D%0A" +
+// Montage
+function sendMontage(){
 
-"Kundennummer: " + kundennummer + "%0D%0A" +
-"Kundenname: " + kundenname + "%0D%0A" +
-"SVAU: " + svau + "%0D%0A%0D%0A" +
+let kdnr=document.getElementById("m_kdnr").value;
 
-"DeInstallation erfolgt: " + erfolgt + "%0D%0A" +
-"Falls nein Grund: " + grund + "%0D%0A%0D%0A" +
+let body=
+"SVAU: "+m_svau.value+"%0D%0A"+
+"Kundennummer: "+kdnr+"%0D%0A"+
+"Gerätetyp: "+m_typ.value+"%0D%0A"+
+"Seriennummer: "+m_serial.value+"%0D%0A"+
+"Spedition: "+m_spedition.value+"%0D%0A"+
+"Geliefert am: "+m_datum.value+"%0D%0A%0D%0A"+
 
-"Gerät abholbereit: " + abholbereit + "%0D%0A" +
-"Mitnahme durch ST: " + mitnahme;
+"Gerät ausgepackt: "+m_ausgepackt.value+"%0D%0A"+
+"Verpackung entsorgt: "+m_entsorgt.value+"%0D%0A%0D%0A"+
 
-window.location.href =
-"mailto:ordermanagment@coffee-perfect.de" +
-"?subject=Deinstallation beim Kunden - Beauftragung Abholung" +
-"&body=" + body;
+"Kundenzufriedenheit Gerät: "+m_zufriedenheit1.value+"%0D%0A"+
+"Kundenzufriedenheit Spedition: "+m_zufriedenheit2.value+"%0D%0A%0D%0A"+
+
+"Bemerkung:%0D%0A"+m_bemerkung.value;
+
+location.href=
+"mailto:tech.support@coffee-perfect.de"+
+"?cc=Martin.bauerfeld@Coffee-perfect.de,Andreas.haufe@Coffee-perfect.de,Heinz.horalek@Coffee-perfect.at"+
+"&subject=Montage mit To-do "+kdnr+
+"&body="+body;
 }
 
 </script>
