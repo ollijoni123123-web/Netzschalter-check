@@ -70,7 +70,7 @@ table {
 
 td, th {
     border: 1px solid #ccc;
-    padding: 5px;
+    padding: 8px;
 }
 </style>
 </head>
@@ -80,6 +80,7 @@ td, th {
 <div class="tabs">
     <button class="active" onclick="openTab(0)">Auftrag</button>
     <button onclick="openTab(1)">KVA</button>
+    <button onclick="openTab(2)">Deinstallation</button>
 </div>
 
 <!-- Auftrag -->
@@ -141,6 +142,64 @@ document.write('<tr><td><input></td><td><input></td><td><input></td></tr>');
 </div>
 </div>
 
+<!-- Deinstallation -->
+<div class="container">
+<div class="box">
+
+<h3>DeInstallation beim Kunden</h3>
+
+<table>
+<tr><th colspan="2">DeInstallation beim Kunden</th></tr>
+
+<tr><td>Kundennummer</td><td><input id="d_kundennummer"></td></tr>
+<tr><td>Kundenname</td><td><input id="d_kundenname"></td></tr>
+<tr><td>SVAU</td><td><input id="d_svau"></td></tr>
+
+<tr>
+<td>DeInstallation erfolgt</td>
+<td>
+<select id="d_erfolgt">
+<option value="">Bitte wählen</option>
+<option>Ja</option>
+<option>Nein</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Falls nein Grund</td>
+<td><input id="d_grund"></td>
+</tr>
+
+<tr>
+<td>Gerät abholbereit</td>
+<td>
+<select id="d_abholbereit">
+<option value="">Bitte wählen</option>
+<option>Ja</option>
+<option>Nein</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Mitnahme durch ST</td>
+<td>
+<select id="d_mitnahme">
+<option value="">Bitte wählen</option>
+<option>Ja</option>
+<option>Nein</option>
+</select>
+</td>
+</tr>
+
+</table>
+
+<button class="send" onclick="sendDeinstall()">Mail erstellen</button>
+
+</div>
+</div>
+
 <script>
 
 // Tabs
@@ -152,9 +211,8 @@ function openTab(index){
     buttons.forEach((b,i)=>b.classList.toggle("active", i===index));
 }
 
-// Auftrag Mail
+// Auftrag
 function sendAuftrag(){
-
 let serial = document.getElementById("serial").value;
 let grund = document.getElementById("grund").value;
 
@@ -170,11 +228,10 @@ grund + "%0D%0A%0D%0A" +
 "Danke und schönen Tag";
 
 window.location.href =
-"mailto:service@coffee-perfect.de" +
-"?subject=Service&body=" + body;
+"mailto:service@coffee-perfect.de?subject=Service&body=" + body;
 }
 
-// KVA Mail
+// KVA
 function sendKVA(){
 
 let kundennummer = document.getElementById("kundennummer").value;
@@ -221,8 +278,42 @@ tableText + "%0D%0A" +
 "Bemerkung:%0D%0A" + document.getElementById("bemerkung").value;
 
 window.location.href =
-"mailto:service@coffee-perfect.de" +
-"?subject=KVA erstellen&body=" + body;
+"mailto:service@coffee-perfect.de?subject=KVA erstellen&body=" + body;
+}
+
+// Deinstallation
+function sendDeinstall(){
+
+let kundennummer = document.getElementById("d_kundennummer").value;
+let kundenname = document.getElementById("d_kundenname").value;
+let svau = document.getElementById("d_svau").value;
+let erfolgt = document.getElementById("d_erfolgt").value;
+let grund = document.getElementById("d_grund").value;
+let abholbereit = document.getElementById("d_abholbereit").value;
+let mitnahme = document.getElementById("d_mitnahme").value;
+
+if(!kundennummer || !kundenname || !svau || !erfolgt || !abholbereit || !mitnahme){
+    alert("Bitte alle Pflichtfelder ausfüllen!");
+    return;
+}
+
+let body =
+"Hallo zusammen,%0D%0A%0D%0A" +
+
+"Kundennummer: " + kundennummer + "%0D%0A" +
+"Kundenname: " + kundenname + "%0D%0A" +
+"SVAU: " + svau + "%0D%0A%0D%0A" +
+
+"DeInstallation erfolgt: " + erfolgt + "%0D%0A" +
+"Falls nein Grund: " + grund + "%0D%0A%0D%0A" +
+
+"Gerät abholbereit: " + abholbereit + "%0D%0A" +
+"Mitnahme durch ST: " + mitnahme;
+
+window.location.href =
+"mailto:ordermanagment@coffee-perfect.de" +
+"?subject=Deinstallation beim Kunden - Beauftragung Abholung" +
+"&body=" + body;
 }
 
 </script>
