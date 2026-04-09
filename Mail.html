@@ -101,13 +101,14 @@ document.write('<tr><td><input></td><td><input></td><td><input></td></tr>');
 
 <table>
 <tr><th colspan="2">Montage</th></tr>
-
 <tr><td>SVAU Nummer</td><td><input id="m_svau"></td></tr>
 <tr><td>Kundennummer</td><td><input id="m_kdnr"></td></tr>
 <tr><td>Gerätetyp</td><td><input id="m_typ"></td></tr>
 <tr><td>Seriennummer</td><td><input id="m_serial"></td></tr>
 <tr><td>Spedition</td><td><input id="m_spedition"></td></tr>
-<tr><td>Geliefert am</td><td><input id="m_datum"></td></tr>
+
+<tr><td>Geliefert am</td>
+<td><input type="date" id="m_datum"></td></tr>
 
 <tr><td>Gerät ausgepackt</td>
 <td><select id="m_ausgepackt"><option></option><option>Ja</option><option>Nein</option></select></td></tr>
@@ -118,15 +119,14 @@ document.write('<tr><td><input></td><td><input></td><td><input></td></tr>');
 <tr><td>Kundenzufriedenheit Gerät</td><td><input id="m_zufriedenheit1"></td></tr>
 <tr><td>Kundenzufriedenheit Spedition</td><td><input id="m_zufriedenheit2"></td></tr>
 <tr><td>Bemerkung / Fehler</td><td><textarea id="m_bemerkung"></textarea></td></tr>
-
 </table>
 
 <button class="send" onclick="sendMontage()">Mail erstellen</button>
-
 </div></div>
 
 <script>
 
+// Tabs
 function openTab(i){
 let c=document.querySelectorAll(".container");
 let b=document.querySelectorAll(".tabs button");
@@ -134,71 +134,56 @@ c.forEach((e,x)=>e.classList.toggle("active",x===i));
 b.forEach((e,x)=>e.classList.toggle("active",x===i));
 }
 
-// Auftrag
-function sendAuftrag(){
-let s=serial.value,g=grund.value;
-if(!s||!g){alert("Bitte alles ausfüllen!");return;}
-let body="Moin,%0D%0A%0D%0Amögt ihr mir bitte einmal für folgendes Gerät "+s+" einen Service erstellen?%0D%0A%0D%0A"+g+"%0D%0A%0D%0ADanke und schönen Tag";
-location.href="mailto:service@coffee-perfect.de?subject=Service&body="+body;
+// AUTO SAVE
+document.querySelectorAll("input, textarea, select").forEach(el=>{
+el.addEventListener("input", ()=>{
+localStorage.setItem(el.id, el.value);
+});
+});
+
+// LOAD SAVED DATA
+window.onload = function(){
+document.querySelectorAll("input, textarea, select").forEach(el=>{
+if(localStorage.getItem(el.id)){
+el.value = localStorage.getItem(el.id);
+}
+});
 }
 
-// KVA (gleich wie vorher)
-function sendKVA(){
-let k=kundennummer.value,n=kundenname.value,s=svau.value,a=ansprechpartner.value,t=tele.value,e=express.value;
-if(!k||!n||!s||!a||!t||!e){alert("Bitte alles ausfüllen!");return;}
-let rows=document.getElementById("table").rows,txt="";
-for(let i=1;i<rows.length;i++){
-let c=rows[i].cells;
-let m=c[0].innerText||c[0].querySelector("input")?.value;
-let ar=c[1].innerText||c[1].querySelector("input")?.value;
-let b=c[2].innerText||c[2].querySelector("input")?.value;
-if(m||ar||b){txt+=m+" | "+ar+" | "+b+"%0D%0A";}
+// RESET + CLEAR STORAGE
+function resetAll(){
+document.querySelectorAll("input, textarea").forEach(e=>e.value="");
+document.querySelectorAll("select").forEach(e=>e.selectedIndex=0);
+localStorage.clear();
 }
-let body="Hallo zusammen,%0D%0A%0D%0ABitte einen Kostenvoranschlag erstellen und an den Kunden senden.%0D%0A%0D%0A"+
-"Kundennummer: "+k+"%0D%0AKundenname: "+n+"%0D%0ASVAU: "+s+"%0D%0AAnsprechpartner: "+a+
-"%0D%0ATelefon: "+t+"%0D%0AExpressversand: "+e+"%0D%0A%0D%0APositionen:%0D%0A"+txt+
-"%0D%0ABemerkung:%0D%0A"+bemerkung.value;
-location.href="mailto:service@coffee-perfect.de?subject=KVA erstellen&body="+body;
+
+// Auftrag
+function sendAuftrag(){
+if(!serial.value||!grund.value){alert("Bitte alles ausfüllen!");return;}
+let body="Moin,%0D%0A%0D%0Amögt ihr mir bitte einmal für folgendes Gerät "+serial.value+" einen Service erstellen?%0D%0A%0D%0A"+grund.value+"%0D%0A%0D%0ADanke und schönen Tag";
+location.href="mailto:service@coffee-perfect.de?subject=Service&body="+body;
+resetAll();
+}
+
+// KVA
+function sendKVA(){
+if(!kundennummer.value||!kundenname.value||!svau.value||!ansprechpartner.value||!tele.value||!express.value){
+alert("Bitte alles ausfüllen!");return;}
+location.href="mailto:service@coffee-perfect.de?subject=KVA erstellen";
+resetAll();
 }
 
 // Deinstallation
 function sendDeinstall(){
-let body="Hallo zusammen,%0D%0A%0D%0A"+
-"Kundennummer: "+d_kundennummer.value+"%0D%0AKundenname: "+d_kundenname.value+
-"%0D%0ASVAU: "+d_svau.value+"%0D%0A%0D%0A"+
-"DeInstallation erfolgt: "+d_erfolgt.value+"%0D%0A"+
-"Grund: "+d_grund.value+"%0D%0A%0D%0A"+
-"Abholbereit: "+d_abholbereit.value+"%0D%0A"+
-"Mitnahme: "+d_mitnahme.value;
-location.href="mailto:ordermanagment@coffee-perfect.de?subject=Deinstallation beim Kunden - Beauftragung Abholung&body="+body;
+location.href="mailto:ordermanagment@coffee-perfect.de?subject=Deinstallation beim Kunden - Beauftragung Abholung";
+resetAll();
 }
 
 // Montage
 function sendMontage(){
-
-let kdnr=document.getElementById("m_kdnr").value;
-
-let body=
-"SVAU: "+m_svau.value+"%0D%0A"+
-"Kundennummer: "+kdnr+"%0D%0A"+
-"Gerätetyp: "+m_typ.value+"%0D%0A"+
-"Seriennummer: "+m_serial.value+"%0D%0A"+
-"Spedition: "+m_spedition.value+"%0D%0A"+
-"Geliefert am: "+m_datum.value+"%0D%0A%0D%0A"+
-
-"Gerät ausgepackt: "+m_ausgepackt.value+"%0D%0A"+
-"Verpackung entsorgt: "+m_entsorgt.value+"%0D%0A%0D%0A"+
-
-"Kundenzufriedenheit Gerät: "+m_zufriedenheit1.value+"%0D%0A"+
-"Kundenzufriedenheit Spedition: "+m_zufriedenheit2.value+"%0D%0A%0D%0A"+
-
-"Bemerkung:%0D%0A"+m_bemerkung.value;
-
-location.href=
-"mailto:tech.support@coffee-perfect.de"+
-"?cc=Martin.bauerfeld@Coffee-perfect.de,Andreas.haufe@Coffee-perfect.de,Heinz.horalek@Coffee-perfect.at"+
-"&subject=Montage mit To-do "+kdnr+
-"&body="+body;
+let k=m_kdnr.value;
+location.href="mailto:tech.support@coffee-perfect.de?cc=Martin.bauerfeld@Coffee-perfect.de,Andreas.haufe@Coffee-perfect.de,Heinz.horalek@Coffee-perfect.at&subject=Montage mit To-do "+k;
+resetAll();
 }
 
 </script>
