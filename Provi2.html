@@ -28,12 +28,6 @@ body {
     border-radius:20px;
     padding:15px;
     margin-bottom:15px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.3);
-}
-
-h1 {
-    text-align:center;
-    margin-bottom:20px;
 }
 
 select, input, button {
@@ -56,7 +50,6 @@ button {
     border-radius:20px;
     overflow:hidden;
     height:20px;
-    margin-top:10px;
 }
 
 .bar {
@@ -88,7 +81,6 @@ button {
     font-size:12px;
     opacity:0.7;
 }
-
 </style>
 </head>
 
@@ -96,9 +88,11 @@ button {
 
 <div class="container">
 
-<h1>📊 Dashboard</h1>
+<h2>📊 Dashboard</h2>
 
 <div class="card">
+<input type="text" id="kunde" placeholder="Kundenname">
+
 <select id="typ">
 <option>Kaffee</option>
 <option>Snack</option>
@@ -128,6 +122,8 @@ button {
 <div class="progress">
 <div class="bar" id="bar"></div>
 </div>
+
+<p id="percentText"></p>
 </div>
 
 <div class="card">
@@ -148,13 +144,23 @@ button {
 <script>
 let data = JSON.parse(localStorage.getItem("data")) || [];
 
+// 👉 HEUTIGES DATUM AUTOMATISCH SETZEN
+document.getElementById("datum").value = new Date().toISOString().split("T")[0];
+
 function addEntry(){
     let e = {
+        kunde:kunde.value,
         typ:typ.value,
         umsatz:+umsatz.value,
         provision:+provision.value,
         datum:datum.value
     };
+
+    if(!e.kunde || !e.umsatz || !e.provision) {
+        alert("Bitte alles ausfüllen!");
+        return;
+    }
+
     data.push(e);
     localStorage.setItem("data", JSON.stringify(data));
     update();
@@ -181,6 +187,7 @@ function update(){
         list.innerHTML += `
         <div class="entry">
             <div>
+                <b>${e.kunde}</b><br>
                 <span class="badge ${e.typ.toLowerCase()}">${e.typ}</span>
                 <div class="small">${e.datum}</div>
             </div>
@@ -221,13 +228,14 @@ function updateChart(k,s,w){
 }
 
 function updateBar(um,pr){
-    let ziel = +zielWert.value;
+    let ziel = parseFloat(zielWert.value);
     let typ = zielTyp.value;
     let val = typ=="umsatz"?um:pr;
 
     let percent = ziel ? (val/ziel)*100 : 0;
 
     bar.style.width = percent+"%";
+    percentText.innerText = percent.toFixed(1) + "% erreicht";
 
     if(percent>=101) bar.style.background="purple";
     else if(percent>=100) bar.style.background="green";
