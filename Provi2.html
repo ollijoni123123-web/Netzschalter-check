@@ -4,110 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Provisions Dashboard PRO</title>
+<title>Dashboard PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/umd/jspdf.umd.min.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family: -apple-system;
-    background:#0f172a;
-    color:white;
-}
-
-.container {
-    padding:15px;
-    max-width:500px;
-    margin:auto;
-}
-
-.card {
-    background:#1e293b;
-    border-radius:20px;
-    padding:15px;
-    margin-bottom:15px;
-}
+body { margin:0; font-family:-apple-system; background:#0f172a; color:white;}
+.container { padding:15px; max-width:500px; margin:auto;}
+.card { background:#1e293b; border-radius:20px; padding:15px; margin-bottom:15px;}
 
 input, select, button {
-    width:100%;
-    padding:12px;
-    margin-top:8px;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
+    width:100%; padding:12px; margin-top:8px;
+    border:none; border-radius:10px;
 }
 
-button {
-    background:#3b82f6;
-    color:white;
-}
+button { background:#3b82f6; color:white;}
 
-.big {
-    font-size:28px;
-    font-weight:bold;
-}
+.big { font-size:26px; font-weight:bold; }
 
-.entry {
-    background:#334155;
-    padding:10px;
-    border-radius:12px;
-    margin-top:8px;
-}
+.entry { background:#334155; padding:10px; border-radius:12px; margin-top:8px;}
+.storno { opacity:0.4; text-decoration:line-through;}
 
-.storno {
-    opacity:0.5;
-    text-decoration:line-through;
-}
+.green { color:#22c55e; }
+.red { color:#ef4444; }
+.gray { color:#aaa; }
 
-.badge {
-    padding:5px 10px;
-    border-radius:10px;
-}
-
+.badge { padding:5px 10px; border-radius:10px;}
 .kaffee { background:brown; }
 .snack { background:silver; color:black;}
 .wasser { background:#3b82f6; }
-
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
 <h2>📊 Dashboard PRO</h2>
 
 <div class="card">
-<input type="text" id="kunde" placeholder="Kundenname">
-
+<input id="kunde" placeholder="Kundenname">
 <select id="typ">
 <option>Kaffee</option>
 <option>Snack</option>
 <option>Wasser</option>
 </select>
-
-<input type="number" id="umsatz" placeholder="Umsatz €">
-<input type="number" id="provision" placeholder="Provision %">
-<input type="date" id="datum">
-
+<input id="umsatz" type="number" placeholder="Umsatz €">
+<input id="provision" type="number" placeholder="Provision %">
+<input id="datum" type="date">
 <button onclick="addEntry()">Speichern</button>
 </div>
 
 <div class="card">
 <input type="month" id="monatFilter" onchange="update()">
-
 <div class="big" id="umsatzBig"></div>
 <div class="big" id="provBig"></div>
+<div id="trend"></div>
 </div>
 
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
 
+<div class="card" id="list"></div>
+
 <div class="card">
-<div id="list"></div>
+<select id="pdfTyp">
+<option value="monat">Aktueller Monat</option>
+<option value="alle">Komplett</option>
+</select>
+<button onclick="exportPDF()">📄 PDF Export</button>
 </div>
 
 </div>
@@ -115,7 +81,6 @@ button {
 <script>
 let data = JSON.parse(localStorage.getItem("data")) || [];
 
-// 👉 Standardwerte
 let today = new Date();
 datum.value = today.toISOString().split("T")[0];
 monatFilter.value = today.toISOString().slice(0,7);
@@ -131,7 +96,7 @@ function addEntry(){
     };
 
     if(!e.kunde || !e.umsatz || !e.provision){
-        alert("Bitte alles ausfüllen!");
+        alert("Bitte ausfüllen");
         return;
     }
 
@@ -151,43 +116,65 @@ function toggleStorno(i){
     update();
 }
 
+function getMonthSum(month){
+    let um=0, pr=0;
+
+    data.forEach(e=>{
+        if(e.datum.startsWith(month) && !e.storno){
+            um += e.umsatz;
+            pr += e.umsatz * e.provision/100;
+        }
+    });
+
+    return {um,pr};
+}
+
 function update(){
     let filter = monatFilter.value;
     let list = document.getElementById("list");
     list.innerHTML="";
 
-    let k=0,s=0,w=0, um=0, pr=0;
+    let {um,pr} = getMonthSum(filter);
+
+    // 👉 TREND
+    let d = new Date(filter+"-01");
+    d.setMonth(d.getMonth()-1);
+    let lastMonth = d.toISOString().slice(0,7);
+    let last = getMonthSum(lastMonth);
+
+    let diff = um - last.um;
+
+    if(diff>0) trend.innerHTML = `<span class="green">📈 +${diff.toFixed(2)}€</span>`;
+    else if(diff<0) trend.innerHTML = `<span class="red">📉 ${diff.toFixed(2)}€</span>`;
+    else trend.innerHTML = `<span class="gray">➖ 0€</span>`;
+
+    umsatzBig.innerText = `💰 ${um.toFixed(2)}€`;
+    provBig.innerText = `💸 ${pr.toFixed(2)}€`;
+
+    let k=0,s=0,w=0;
 
     data.forEach((e,i)=>{
-        if(filter && !e.datum.startsWith(filter)) return;
+        if(!e.datum.startsWith(filter)) return;
 
         let prov = e.umsatz * e.provision/100;
 
-        // 👉 STORNO ABZIEHEN
         if(!e.storno){
-            um += e.umsatz;
-            pr += prov;
-
             if(e.typ=="Kaffee") k++;
             if(e.typ=="Snack") s++;
             if(e.typ=="Wasser") w++;
         }
 
         list.innerHTML += `
-        <div class="entry ${e.storno ? 'storno':''}">
+        <div class="entry ${e.storno?'storno':''}">
             <b>${e.kunde}</b><br>
             <span class="badge ${e.typ.toLowerCase()}">${e.typ}</span><br>
             ${e.umsatz}€ | ${prov.toFixed(2)}€<br>
             ${e.datum}<br>
             <button onclick="toggleStorno(${i})">
-                ${e.storno ? 'Rückgängig' : 'Storno'}
+                ${e.storno?"Rückgängig":"Storno"}
             </button>
-        </div>
-        `;
+        </div>`;
     });
-
-    umsatzBig.innerText = `💰 Umsatz: ${um.toFixed(2)}€`;
-    provBig.innerText = `💸 Provision: ${pr.toFixed(2)}€`;
 
     updateChart(k,s,w);
 }
@@ -206,8 +193,45 @@ function updateChart(k,s,w){
     });
 }
 
+function exportPDF(){
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF();
+
+    let mode = pdfTyp.value;
+    let filter = monatFilter.value;
+
+    let y=10;
+    let totalU=0, totalP=0;
+
+    doc.text("Provisions Bericht",10,y); y+=10;
+
+    data.forEach(e=>{
+        if(mode==="monat" && !e.datum.startsWith(filter)) return;
+
+        let prov = e.umsatz * e.provision/100;
+
+        if(!e.storno){
+            totalU += e.umsatz;
+            totalP += prov;
+        }
+
+        doc.text(
+            `${e.datum} | ${e.kunde} | ${e.typ} | ${e.umsatz}€ | ${prov.toFixed(2)}€ ${e.storno?"(STORNO)":""}`,
+            10,y
+        );
+
+        y+=8;
+        if(y>280){ doc.addPage(); y=10;}
+    });
+
+    y+=10;
+    doc.text(`Gesamt Umsatz: ${totalU.toFixed(2)}€`,10,y); y+=10;
+    doc.text(`Gesamt Provision: ${totalP.toFixed(2)}€`,10,y);
+
+    doc.save("bericht.pdf");
+}
+
 update();
 </script>
-
 </body>
 </html>
