@@ -3,102 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mail Vorlagen</title>
+<title>Email Vorlagen</title>
 
 <style>
-body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
-  text-align: center;
-  padding: 20px;
-}
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f4f4f4;
+    }
 
-button {
-  width: 90%;
-  max-width: 400px;
-  margin: 10px;
-  padding: 15px;
-  border-radius: 10px;
-  border: none;
-  color: white;
-  font-size: 16px;
-}
+    h1 {
+        text-align: center;
+    }
 
-.kva { background: #2563eb; }
-.deinstall { background: #dc2626; }
+    .container {
+        max-width: 400px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    input, textarea, button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+    }
+
+    button {
+        background-color: #007AFF;
+        color: white;
+        border: none;
+        font-weight: bold;
+    }
+
+    button:active {
+        background-color: #005BBB;
+    }
 </style>
 </head>
 
 <body>
 
-<h2>📧 Mail Vorlagen</h2>
+<h1>Email Vorlagen</h1>
 
-<!-- 🔵 KVA -->
-<button class="kva" onclick="sendKVA()">
-📄 KVA anfordern
-</button>
+<div class="container">
+    <h3>Auftragserstellung</h3>
 
-<!-- 🔴 DeInstallation -->
-<button class="deinstall" onclick="sendDeinstall()">
-🚚 DeInstallation / Abholung
-</button>
+    <label>Serialnummer:</label>
+    <input type="text" id="serial" placeholder="Serialnummer eingeben">
+
+    <label>Grund:</label>
+    <textarea id="grund" placeholder="Grund eingeben"></textarea>
+
+    <button onclick="sendMail()">Mail erstellen</button>
+</div>
 
 <script>
+function sendMail() {
+    var serial = document.getElementById("serial").value;
+    var grund = document.getElementById("grund").value;
 
-// 🔵 KVA MAIL
-function sendKVA(){
-  const email = "Oliver.jonischkeit@coffee-perfect.de";
-  const subject = "Bitte erstellt einen KVA";
+    var subject = "Service";
 
-  const body =
-`Guten Tag,
+    var body = "Moin,%0D%0A%0D%0A" +
+               "mögt ihr mir bitte einmal für folgendes Gerät (" + serial + ") einen Service erstellen?%0D%0A%0D%0A" +
+               grund + "%0D%0A%0D%0A" +
+               "Danke und schönen Tag";
 
-bitte erstellt einen KVA für folgenden Kunden:
+    var mailtoLink = "mailto:service@coffee-perfect.de" +
+                     "?subject=" + encodeURIComponent(subject) +
+                     "&body=" + body;
 
------------------------------------
-Kundennummer:
-Name:
-Email:
-Tele:
-
-Teile:
-1.
-2.
-3.
-4.
------------------------------------
-
-Mit freundlichen Grüßen`;
-
-  window.location.href =
-    "mailto:" + email +
-    "?subject=" + encodeURIComponent(subject) +
-    "&body=" + encodeURIComponent(body);
+    window.location.href = mailtoLink;
 }
-
-
-// 🔴 DEINSTALL MAIL
-function sendDeinstall(){
-  const email = "ollijoni123123@gmail.com";
-  const subject = "Abholung nach DeInstallation";
-
-  const body =
-`Guten Tag,
-
-bitte holt folgendes Gerät:
-
-Bei Kunde:
-Ab:
-
-Mit freundlichen Grüßen`;
-
-  window.location.href =
-    "mailto:" + email +
-    "?subject=" + encodeURIComponent(subject) +
-    "&body=" + encodeURIComponent(body);
-}
-
 </script>
 
 </body>
