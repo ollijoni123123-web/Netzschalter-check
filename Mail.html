@@ -6,81 +6,225 @@
 <title>Email Vorlagen</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        background: #f4f4f4;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+}
 
-    h1 {
-        text-align: center;
-    }
+.tabs {
+    display: flex;
+    background: #007AFF;
+}
 
-    .container {
-        max-width: 400px;
-        margin: auto;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
+.tabs button {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    background: #007AFF;
+    color: white;
+    font-weight: bold;
+}
 
-    input, textarea, button {
-        width: 100%;
-        margin-top: 10px;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        font-size: 16px;
-    }
+.tabs button.active {
+    background: #005BBB;
+}
 
-    button {
-        background-color: #007AFF;
-        color: white;
-        border: none;
-        font-weight: bold;
-    }
+.container {
+    display: none;
+    padding: 20px;
+}
 
-    button:active {
-        background-color: #005BBB;
-    }
+.container.active {
+    display: block;
+}
+
+.box {
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+input, textarea, select, button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button.send {
+    background: #007AFF;
+    color: white;
+    font-weight: bold;
+    border: none;
+}
+
+table {
+    width: 100%;
+    margin-top: 10px;
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 1px solid #ccc;
+    padding: 5px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>Email Vorlagen</h1>
+<div class="tabs">
+    <button class="active" onclick="openTab(0)">Auftrag</button>
+    <button onclick="openTab(1)">KVA</button>
+</div>
 
+<!-- Auftrag -->
+<div class="container active">
+<div class="box">
+
+<h3>Auftragserstellung</h3>
+
+<input id="serial" placeholder="Serialnummer">
+<textarea id="grund" placeholder="Grund"></textarea>
+
+<button class="send" onclick="sendAuftrag()">Mail erstellen</button>
+
+</div>
+</div>
+
+<!-- KVA -->
 <div class="container">
-    <h3>Auftragserstellung</h3>
+<div class="box">
 
-    <label>Serialnummer:</label>
-    <input type="text" id="serial" placeholder="Serialnummer eingeben">
+<h3>KVA erstellen</h3>
 
-    <label>Grund:</label>
-    <textarea id="grund" placeholder="Grund eingeben"></textarea>
+<input id="kundennummer" placeholder="Kundennummer">
+<input id="kundenname" placeholder="Kundenname">
+<input id="svau" placeholder="SVAU">
+<input id="ansprechpartner" placeholder="Ansprechpartner inkl. Email">
+<input id="tele" placeholder="Telefon">
 
-    <button onclick="sendMail()">Mail erstellen</button>
+<select id="express">
+<option value="">Expressversand wählen</option>
+<option>Ja</option>
+<option>Nein</option>
+</select>
+
+<textarea id="bemerkung" placeholder="Bemerkung"></textarea>
+
+<table id="table">
+<tr>
+<th>Menge</th>
+<th>Artikelnummer</th>
+<th>Bezeichnung</th>
+</tr>
+
+<tr><td>1</td><td>5999/001</td><td>Anfahrt</td></tr>
+<tr><td>1</td><td>5999/03</td><td>Pauschale</td></tr>
+<tr><td>1</td><td>5999/012</td><td>Verbrauchsmaterialien</td></tr>
+<tr><td><input></td><td>5999/002</td><td>Stundenpauschale 1AE=10min</td></tr>
+
+<script>
+for(let i=0;i<11;i++){
+document.write('<tr><td><input></td><td><input></td><td><input></td></tr>');
+}
+</script>
+
+</table>
+
+<button class="send" onclick="sendKVA()">KVA Mail erstellen</button>
+
+</div>
 </div>
 
 <script>
-function sendMail() {
-    var serial = document.getElementById("serial").value;
-    var grund = document.getElementById("grund").value;
 
-    var subject = "Service";
+// Tabs
+function openTab(index){
+    let tabs = document.querySelectorAll(".container");
+    let buttons = document.querySelectorAll(".tabs button");
 
-    var body = "Moin,%0D%0A%0D%0A" +
-               "mögt ihr mir bitte einmal für folgendes Gerät " + serial + " einen Service erstellen?%0D%0A%0D%0A" +
-               grund + "%0D%0A%0D%0A" +
-               "Danke und schönen Tag";
-
-    var mailtoLink = "mailto:service@coffee-perfect.de" +
-                     "?subject=" + encodeURIComponent(subject) +
-                     "&body=" + body;
-
-    window.location.href = mailtoLink;
+    tabs.forEach((t,i)=>t.classList.toggle("active", i===index));
+    buttons.forEach((b,i)=>b.classList.toggle("active", i===index));
 }
+
+// Auftrag Mail
+function sendAuftrag(){
+
+let serial = document.getElementById("serial").value;
+let grund = document.getElementById("grund").value;
+
+if(!serial || !grund){
+    alert("Bitte alles ausfüllen!");
+    return;
+}
+
+let body =
+"Moin,%0D%0A%0D%0A" +
+"mögt ihr mir bitte einmal für folgendes Gerät " + serial + " einen Service erstellen?%0D%0A%0D%0A" +
+grund + "%0D%0A%0D%0A" +
+"Danke und schönen Tag";
+
+window.location.href =
+"mailto:service@coffee-perfect.de" +
+"?subject=Service&body=" + body;
+}
+
+// KVA Mail
+function sendKVA(){
+
+let kundennummer = document.getElementById("kundennummer").value;
+let kundenname = document.getElementById("kundenname").value;
+let svau = document.getElementById("svau").value;
+let ansprechpartner = document.getElementById("ansprechpartner").value;
+let tele = document.getElementById("tele").value;
+let express = document.getElementById("express").value;
+
+if(!kundennummer || !kundenname || !svau || !ansprechpartner || !tele || !express){
+    alert("Bitte alle Pflichtfelder ausfüllen!");
+    return;
+}
+
+let rows = document.getElementById("table").rows;
+let tableText = "";
+
+for(let i=1;i<rows.length;i++){
+    let cols = rows[i].cells;
+
+    let m = cols[0].innerText || cols[0].querySelector("input")?.value;
+    let a = cols[1].innerText || cols[1].querySelector("input")?.value;
+    let b = cols[2].innerText || cols[2].querySelector("input")?.value;
+
+    if(m || a || b){
+        tableText += m + " | " + a + " | " + b + "%0D%0A";
+    }
+}
+
+let body =
+"Hallo zusammen,%0D%0A%0D%0A" +
+"Bitte einen Kostenvoranschlag erstellen und an den Kunden senden.%0D%0A%0D%0A" +
+
+"Kundennummer: " + kundennummer + "%0D%0A" +
+"Kundenname: " + kundenname + "%0D%0A" +
+"SVAU: " + svau + "%0D%0A" +
+"Ansprechpartner: " + ansprechpartner + "%0D%0A" +
+"Telefon: " + tele + "%0D%0A" +
+"Expressversand: " + express + "%0D%0A%0D%0A" +
+
+"Positionen:%0D%0A" +
+tableText + "%0D%0A" +
+
+"Bemerkung:%0D%0A" + document.getElementById("bemerkung").value;
+
+window.location.href =
+"mailto:service@coffee-perfect.de" +
+"?subject=KVA erstellen&body=" + body;
+}
+
 </script>
 
 </body>
