@@ -7,7 +7,7 @@
 <title>Dashboard PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/umd/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 body { margin:0; font-family:-apple-system; background:#0f172a; color:white;}
@@ -26,14 +26,15 @@ button { background:#3b82f6; color:white;}
 .entry { background:#334155; padding:10px; border-radius:12px; margin-top:8px;}
 .storno { opacity:0.4; text-decoration:line-through;}
 
-.green { color:#22c55e; }
-.red { color:#ef4444; }
-.gray { color:#aaa; }
+.actions button {
+    margin-top:5px;
+}
 
 .badge { padding:5px 10px; border-radius:10px;}
 .kaffee { background:brown; }
 .snack { background:silver; color:black;}
 .wasser { background:#3b82f6; }
+
 </style>
 </head>
 
@@ -110,6 +111,14 @@ function addEntry(){
     update();
 }
 
+function deleteEntry(i){
+    if(confirm("Wirklich löschen?")){
+        data.splice(i,1);
+        localStorage.setItem("data", JSON.stringify(data));
+        update();
+    }
+}
+
 function toggleStorno(i){
     data[i].storno = !data[i].storno;
     localStorage.setItem("data", JSON.stringify(data));
@@ -136,7 +145,7 @@ function update(){
 
     let {um,pr} = getMonthSum(filter);
 
-    // 👉 TREND
+    // Trend
     let d = new Date(filter+"-01");
     d.setMonth(d.getMonth()-1);
     let lastMonth = d.toISOString().slice(0,7);
@@ -144,9 +153,9 @@ function update(){
 
     let diff = um - last.um;
 
-    if(diff>0) trend.innerHTML = `<span class="green">📈 +${diff.toFixed(2)}€</span>`;
-    else if(diff<0) trend.innerHTML = `<span class="red">📉 ${diff.toFixed(2)}€</span>`;
-    else trend.innerHTML = `<span class="gray">➖ 0€</span>`;
+    if(diff>0) trend.innerHTML = `📈 +${diff.toFixed(2)}€`;
+    else if(diff<0) trend.innerHTML = `📉 ${diff.toFixed(2)}€`;
+    else trend.innerHTML = `➖ 0€`;
 
     umsatzBig.innerText = `💰 ${um.toFixed(2)}€`;
     provBig.innerText = `💸 ${pr.toFixed(2)}€`;
@@ -169,10 +178,14 @@ function update(){
             <b>${e.kunde}</b><br>
             <span class="badge ${e.typ.toLowerCase()}">${e.typ}</span><br>
             ${e.umsatz}€ | ${prov.toFixed(2)}€<br>
-            ${e.datum}<br>
-            <button onclick="toggleStorno(${i})">
-                ${e.storno?"Rückgängig":"Storno"}
-            </button>
+            ${e.datum}
+            
+            <div class="actions">
+                <button onclick="toggleStorno(${i})">
+                    ${e.storno?"Rückgängig":"Storno"}
+                </button>
+                <button onclick="deleteEntry(${i})">❌ Löschen</button>
+            </div>
         </div>`;
     });
 
@@ -193,6 +206,7 @@ function updateChart(k,s,w){
     });
 }
 
+// 👉 FIXED PDF EXPORT
 function exportPDF(){
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
@@ -200,10 +214,12 @@ function exportPDF(){
     let mode = pdfTyp.value;
     let filter = monatFilter.value;
 
-    let y=10;
-    let totalU=0, totalP=0;
+    let y = 10;
+    doc.setFontSize(14);
+    doc.text("Provisionsbericht",10,y);
+    y += 10;
 
-    doc.text("Provisions Bericht",10,y); y+=10;
+    let totalU=0, totalP=0;
 
     data.forEach(e=>{
         if(mode==="monat" && !e.datum.startsWith(filter)) return;
@@ -215,20 +231,26 @@ function exportPDF(){
             totalP += prov;
         }
 
-        doc.text(
-            `${e.datum} | ${e.kunde} | ${e.typ} | ${e.umsatz}€ | ${prov.toFixed(2)}€ ${e.storno?"(STORNO)":""}`,
-            10,y
-        );
+        let text = `${e.datum} | ${e.kunde} | ${e.typ} | ${e.umsatz}€ | ${prov.toFixed(2)}€`;
+        if(e.storno) text += " (STORNO)";
 
-        y+=8;
-        if(y>280){ doc.addPage(); y=10;}
+        doc.setFontSize(10);
+        doc.text(text,10,y);
+        y += 6;
+
+        if(y > 280){
+            doc.addPage();
+            y = 10;
+        }
     });
 
-    y+=10;
-    doc.text(`Gesamt Umsatz: ${totalU.toFixed(2)}€`,10,y); y+=10;
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`Gesamt Umsatz: ${totalU.toFixed(2)}€`,10,y);
+    y += 8;
     doc.text(`Gesamt Provision: ${totalP.toFixed(2)}€`,10,y);
 
-    doc.save("bericht.pdf");
+    doc.save("Provisionsbericht.pdf");
 }
 
 update();
