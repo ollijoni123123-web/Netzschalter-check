@@ -30,7 +30,7 @@ body {
     margin-bottom:15px;
 }
 
-select, input, button {
+input, select, button {
     width:100%;
     padding:12px;
     margin-top:8px;
@@ -43,19 +43,6 @@ button {
     background:#3b82f6;
     color:white;
     font-weight:bold;
-}
-
-.progress {
-    background:#334155;
-    border-radius:20px;
-    overflow:hidden;
-    height:20px;
-}
-
-.bar {
-    height:100%;
-    width:0%;
-    transition:0.5s;
 }
 
 .entry {
@@ -107,23 +94,9 @@ button {
 </div>
 
 <div class="card">
-<input type="month" id="monatFilter" onchange="update()">
+<input type="month" id="monatFilter">
+<input type="text" id="suche" placeholder="🔍 Kunde suchen..." oninput="update()">
 <p id="stats"></p>
-</div>
-
-<div class="card">
-<select id="zielTyp">
-<option value="umsatz">Umsatz</option>
-<option value="provision">Provision</option>
-</select>
-
-<input type="number" id="zielWert" placeholder="Ziel">
-
-<div class="progress">
-<div class="bar" id="bar"></div>
-</div>
-
-<p id="percentText"></p>
 </div>
 
 <div class="card">
@@ -136,6 +109,11 @@ button {
 </div>
 
 <div class="card">
+<select id="pdfTyp">
+<option value="monat">Nur aktueller Monat</option>
+<option value="alle">Alle Daten</option>
+</select>
+
 <button onclick="exportPDF()">PDF Export</button>
 </div>
 
@@ -144,8 +122,10 @@ button {
 <script>
 let data = JSON.parse(localStorage.getItem("data")) || [];
 
-// 👉 HEUTIGES DATUM AUTOMATISCH SETZEN
-document.getElementById("datum").value = new Date().toISOString().split("T")[0];
+// 👉 HEUTE + AKTUELLER MONAT
+let today = new Date();
+datum.value = today.toISOString().split("T")[0];
+monatFilter.value = today.toISOString().slice(0,7);
 
 function addEntry(){
     let e = {
@@ -156,13 +136,19 @@ function addEntry(){
         datum:datum.value
     };
 
-    if(!e.kunde || !e.umsatz || !e.provision) {
+    if(!e.kunde || !e.umsatz || !e.provision){
         alert("Bitte alles ausfüllen!");
         return;
     }
 
     data.push(e);
     localStorage.setItem("data", JSON.stringify(data));
+
+    // 👉 FELDER LEEREN
+    kunde.value="";
+    umsatz.value="";
+    provision.value="";
+
     update();
 }
 
@@ -174,6 +160,8 @@ function deleteEntry(i){
 
 function update(){
     let filter = monatFilter.value;
+    let search = suche.value.toLowerCase();
+
     let list = document.getElementById("list");
     list.innerHTML="";
 
@@ -181,6 +169,7 @@ function update(){
 
     data.forEach((e,i)=>{
         if(filter && !e.datum.startsWith(filter)) return;
+        if(search && !e.kunde.toLowerCase().includes(search)) return;
 
         let prov = e.umsatz * e.provision/100;
 
@@ -210,7 +199,6 @@ function update(){
     stats.innerText = `Monat: ${um.toFixed(2)}€ | Provision: ${pr.toFixed(2)}€`;
 
     updateChart(k,s,w);
-    updateBar(um,pr);
 }
 
 function updateChart(k,s,w){
@@ -227,27 +215,30 @@ function updateChart(k,s,w){
     });
 }
 
-function updateBar(um,pr){
-    let ziel = parseFloat(zielWert.value);
-    let typ = zielTyp.value;
-    let val = typ=="umsatz"?um:pr;
-
-    let percent = ziel ? (val/ziel)*100 : 0;
-
-    bar.style.width = percent+"%";
-    percentText.innerText = percent.toFixed(1) + "% erreicht";
-
-    if(percent>=101) bar.style.background="purple";
-    else if(percent>=100) bar.style.background="green";
-    else bar.style.background="red";
-}
-
 function exportPDF(){
     const { jsPDF } = window.jspdf;
     let doc = new jsPDF();
 
-    doc.text("Dashboard Übersicht",10,10);
-    doc.text(stats.innerText,10,20);
+    let filter = monatFilter.value;
+    let mode = pdfTyp.value;
+
+    let y = 10;
+    doc.text("Provisions Übersicht",10,y);
+    y+=10;
+
+    data.forEach(e=>{
+        if(mode==="monat" && !e.datum.startsWith(filter)) return;
+
+        let prov = e.umsatz * e.provision/100;
+
+        doc.text(`${e.datum} | ${e.kunde} | ${e.typ} | ${e.umsatz}€ | ${prov.toFixed(2)}€`,10,y);
+        y+=8;
+
+        if(y>280){
+            doc.addPage();
+            y=10;
+        }
+    });
 
     doc.save("report.pdf");
 }
